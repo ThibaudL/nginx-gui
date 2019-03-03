@@ -4,3 +4,4 @@ logs/**
 server/logs/**
 nginx/logs/**
 server/db/**
+public/dist/**
