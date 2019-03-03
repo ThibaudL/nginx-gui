@@ -5,3 +5,5 @@ server/logs/**
 nginx/logs/**
 server/db/**
 public/dist/**
+nginx/conf/nginx.conf
+nginx/conf/nginx.tmp.conf
