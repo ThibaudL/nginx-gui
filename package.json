@@ -16,7 +16,7 @@
     "build:dev": "webpack -w -d",
     "start": "webpack-dev-server -w -d --inline=false",
     "server:dev": "node server/main.js",
-    "prepublish": "npm run build"
+    "prepare": "npm run build"
   },
   "dependencies": {
     "angular": "1.7.7",
