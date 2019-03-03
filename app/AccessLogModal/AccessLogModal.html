@@ -1,0 +1,17 @@
+<div class="modal-header">
+    Nginx Access Logs
+</div>
+<div class="modal-body">
+    <div>
+        <input type="text" class="form-control" ng-model="$ctrl.filter" placeholder="Filter">
+    </div>
+    <pre><div ng-repeat="log in $ctrl.logs | filter : {$ : $ctrl.filter} | orderBy : $index : true track by $index ">
+{{log}}
+</div></pre>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-danger pull-right" ng-click="$ctrl.close()">
+        Fermer
+    </button>
+    <div class="clearfix"></div>
+</div>

@@ -1,0 +1,53 @@
+tr.editing > td .glyphicon {
+    color: white;
+}
+
+.glyphicon {
+    font-size: x-large;
+    color: #2e6da4;
+    cursor: pointer;
+}
+
+.glyphicon:hover {
+    color: #204d74;
+}
+
+table.table > tbody > tr > td {
+    vertical-align: middle;
+    padding: 0;
+    text-align: center;
+}
+
+table.table > thead > tr > th {
+    vertical-align: middle;
+    padding: 10px;
+    text-align: center;
+}
+
+td.enable {
+    width: 115px;
+}
+
+td.edit,
+td.conf {
+    width: 60px;
+}
+
+.container-fluid {
+    padding-top: 20px;
+}
+
+tr.editing > td {
+    background-color: #2e6da4;
+    color: white;
+}
+
+@media (min-width: 100px) {
+    .modal-dialog.modal-xl {
+        width: 100%;
+    }
+}
+
+edit-server .location>.clearfix {
+    padding-bottom: 5px;
+}

@@ -1,0 +1,69 @@
+<form ng-submit="$ctrl.save()">
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="pull-left">Server :</h4>
+                    <button type="button"
+                            class="pull-right btn btn-success"
+                            ng-click="$ctrl.server.locations.push({})">
+                        Add location
+                    </button>
+                    <span class="pull-right">&nbsp;</span>
+                    <button type="button"
+                            class="pull-right btn btn-danger"
+                            ng-click="$ctrl.deleteServer($ctrl.server)">
+                        Delete server
+                    </button>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="panel-body">
+                    <div>
+                        <label for="dName">Display name</label>
+                        <input type="text" id="dName"
+                               class="form-control" ng-model="$ctrl.server.displayName">
+                        <hr>
+                        <label for="port">Port</label>
+                        <input type="text" id="port"
+                               class="form-control" ng-model="$ctrl.server.port">
+                        <label for="name">Server name</label>
+                        <input type="text" id="name"
+                               class="form-control" ng-model="$ctrl.server.name">
+                    </div>
+                    <hr>
+                    <div>
+                        <label for="extraConf">Additionnal conf for server</label>
+                        <textarea type="text" id="extraConf"
+                                  class="form-control" ng-model="$ctrl.server.extraConf"></textarea>
+                    </div>
+                    <hr>
+                    <div class="location" ng-repeat="location in $ctrl.server.locations track by $index">
+                        <label for="location" class="pull-left">Location </label>
+                        <span class="glyphicon glyphicon-trash pull-right" ng-click="$ctrl.removeLocation($index)"
+                            uib-tooltip="Remove location" tooltip-append-to-body="true"></span>
+                        <div class="clearfix"></div>
+                        <input id="location" class="form-control"
+                               type="text" ng-model="location.location">
+                        <label for="proxy-pass">Proxy-pass</label>
+                        <input id="proxy-pass" class="form-control"
+                               type="text"
+                               ng-model="location.proxyPass">
+                        <label for="extraConfLocation">Additionnal conf for location</label>
+                        <textarea type="text" id="extraConfLocation"
+                                  class="form-control" ng-model="location.extraConf"></textarea>
+                        <hr>
+                    </div>
+                    <button type="button" class="btn btn-info form-control"
+                            ng-click="location.showSample = !location.showSample">Show Nginx conf
+                    </button>
+                    <pre ng-if="location.showSample" ng-bind="$ctrl.sample($ctrl.server)"></pre>
+                </div>
+                <div class="panel-footer">
+                    <button class="btn btn-primary form-control">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>

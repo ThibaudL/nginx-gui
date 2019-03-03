@@ -1,0 +1,11 @@
+logs/access.log
+logs/error.log
+logs/nginx.pid
+server/db/data.json
+server/logs/logs.log
+node_modules
+.idea
+.iml
+app
+webpacl.config.js
+tsconfig.json
