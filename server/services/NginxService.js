@@ -100,7 +100,9 @@ http {
             .map((server) => server.conf)
             .reduce((a, b) => a + '\r\n' + b)}
 }`);
-        this.nginx = childProcess.spawn(path.join(__dirname, '../../nginx/nginx.exe'), ['-c', confFile, '-cwd',path.join(__dirname, '../../')]);
+        this.nginx = childProcess.spawn(path.join(__dirname, '../../nginx/nginx.exe'), ['-c', confFile], {
+            cwd : path.join(__dirname, '../../')
+        });
         LOGGER.debug('Running nginx with PID : ', this.nginx.pid);
         this.nginx.stdout.on('data', (d) => LOGGER.debug('stdout', d.toString()));
         this.nginx.stderr.on('data', (d) => LOGGER.debug('stderr', d.toString()));
