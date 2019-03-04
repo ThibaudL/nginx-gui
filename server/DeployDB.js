@@ -2,6 +2,7 @@
 const LOGGER = require('./utils/logger');
 const path = require('path');
 const fs = require('fs');
+const homedir = require('os').homedir();
 
 const DeployDB = function DeployDB() {
 
@@ -9,16 +10,21 @@ const DeployDB = function DeployDB() {
     const nginxCollection = 'nginx';
 
     const loki = require('lokijs');
-    let dbPath = path.join(__dirname, 'db/data.json');
+    let dbPath = path.join(homedir, 'nginx-gui');
 
-    if(!fs.existsSync(dbPath)){
-        LOGGER.debug('Copying init database because none where found.');
-        const dbInitPath = path.join(__dirname, 'db/data.init.json');
-        fs.createReadStream(dbInitPath).pipe(fs.createWriteStream(dbPath));
+    if(!fs.existsSync(dbPath)) {
+        LOGGER.debug('Creating data folder : '+dbPath);
+        fs.mkdirSync(dbPath);
     }
 
-    const db = new loki(dbPath);
-    LOGGER.debug(`DB path : ${dbPath}`);
+    if(!fs.existsSync(dbPath+'/data.json')){
+        LOGGER.debug('Copying init database because none where found.');
+        const dbInitPath = path.join(__dirname, 'db/data.init.json');
+        fs.createReadStream(dbInitPath).pipe(fs.createWriteStream(dbPath+'/data.json'));
+    }
+
+    const db = new loki(dbPath+'/data.json');
+    LOGGER.debug(`DB path : ${dbPath+'/data.json'}`);
     const createIfNotExist = function (name) {
         LOGGER.debug(`DB : createIfNotExist : ${name}`);
         if (!db.getCollection(name)) {
