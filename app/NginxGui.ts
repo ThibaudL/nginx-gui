@@ -55,7 +55,7 @@ export default class NginxGui implements IController {
     }
 
     addServer(){
-        this.servers.push({locations:[{}]});
+        this.servers.push({locations:[{enable:true}]});
         this.save()
             .then((lastServer) => {
                 this.editServer = lastServer;
