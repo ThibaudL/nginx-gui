@@ -1,3 +1,5 @@
+![Conventional Commits](https://img.shields.io/npm/v/nginx-gui.svg)
+
 ## How to use : 
 **With npm :**
 ``npm i -g nginx-gui``
