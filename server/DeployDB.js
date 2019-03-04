@@ -14,7 +14,7 @@ const DeployDB = function DeployDB() {
     if(!fs.existsSync(dbPath)){
         LOGGER.debug('Copying init database because none where found.');
         const dbInitPath = path.join(__dirname, 'db/data.init.json');
-        fs.createReadStream(dbPath).pipe(fs.createWriteStream(dbPath));
+        fs.createReadStream(dbInitPath).pipe(fs.createWriteStream(dbPath));
     }
 
     const db = new loki(dbPath);
