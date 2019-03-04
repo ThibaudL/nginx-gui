@@ -19,38 +19,54 @@
                 </div>
                 <div class="panel-body">
                     <div>
-                        <label for="dName">Display name</label>
-                        <input type="text" id="dName"
-                               class="form-control" ng-model="$ctrl.server.displayName">
+                        <div class="form-group">
+                            <label for="dName">Display name</label>
+                            <input type="text" id="dName"
+                                   class="form-control" ng-model="$ctrl.server.displayName">
+                        </div>
                         <hr>
-                        <label for="port">Port</label>
-                        <input type="text" id="port"
-                               class="form-control" ng-model="$ctrl.server.port">
-                        <label for="name">Name</label>
-                        <input type="text" id="name"
-                               class="form-control" ng-model="$ctrl.server.name">
+                        <div class="form-group">
+                            <label for="port">Port</label>
+                            <input type="text" id="port"
+                                   class="form-control" ng-model="$ctrl.server.port">
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Name</label>
+                            <input type="text" id="name"
+                                   class="form-control" ng-model="$ctrl.server.name">
+                        </div>
                     </div>
                     <hr>
-                    <div>
+                    <div class="form-group">
                         <label for="extraConf">Additionnal conf for server</label>
                         <textarea type="text" id="extraConf"
                                   class="form-control" ng-model="$ctrl.server.extraConf"></textarea>
                     </div>
                     <hr>
                     <div class="location" ng-repeat="location in $ctrl.server.locations track by $index">
-                        <label for="location" class="pull-left">Location </label>
-                        <span class="glyphicon glyphicon-trash pull-right" ng-click="$ctrl.removeLocation($index)"
-                            uib-tooltip="Remove location" tooltip-append-to-body="true"></span>
-                        <div class="clearfix"></div>
-                        <input id="location" class="form-control"
-                               type="text" ng-model="location.location">
-                        <label for="proxy-pass">Proxy-pass</label>
-                        <input id="proxy-pass" class="form-control"
-                               type="text"
-                               ng-model="location.proxyPass">
-                        <label for="extraConfLocation">Additionnal conf for location</label>
-                        <textarea type="text" id="extraConfLocation"
-                                  class="form-control" ng-model="location.extraConf"></textarea>
+                        <div class="form-group">
+                            <button class="btn btn-primary btn-trash"
+                                    ng-click="$ctrl.removeLocation($index)"
+                                    uib-tooltip="Remove location"
+                                    tooltip-append-to-body="true">
+                                <span class="glyphicon glyphicon-trash"
+                                      aria-hidden="true"></span>
+                            </button>
+                            <label for="location">Location </label>
+                            <input id="location" class="form-control"
+                                   type="text" ng-model="location.location">
+                        </div>
+                        <div class="form-group">
+                            <label for="proxy-pass">Proxy-pass</label>
+                            <input id="proxy-pass" class="form-control"
+                                type="text"
+                                ng-model="location.proxyPass">
+                        </div>
+                        <div class="form-group">
+                            <label for="extraConfLocation">Additionnal conf for location</label>
+                            <textarea type="text" id="extraConfLocation"
+                                      class="form-control" ng-model="location.extraConf"></textarea>
+                        </div>
                         <hr>
                     </div>
                     <button type="button" class="btn btn-info form-control"
