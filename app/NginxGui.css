@@ -1,16 +1,6 @@
-tr.editing > td .glyphicon {
-    color: white;
-}
-
-.glyphicon {
-    font-size: x-large;
-    color: #2e6da4;
-    cursor: pointer;
-}
-
-.glyphicon:hover {
-    color: #204d74;
-}
+/**
+ * Servers table configuration
+ */
 
 table.table > tbody > tr > td {
     vertical-align: middle;
@@ -28,9 +18,11 @@ td.enable {
     width: 115px;
 }
 
-td.edit,
-td.conf {
+table.table > tbody > tr > td.actions-container {
     width: 60px;
+    padding: 5px;
+    border-right: 0;
+    border-left: 0;
 }
 
 .container-fluid {
