@@ -1,3 +1,9 @@
+## How to use : 
+**With npm :**
+``npm i -g nginx-gui``
+
+Then run : 
+``nginx-gui`` and access http://localhost:9003
 ## DEV MODE : 
 
 - run ``npm start``
