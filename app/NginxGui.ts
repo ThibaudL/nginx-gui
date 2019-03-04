@@ -85,7 +85,12 @@ export default class NginxGui implements IController {
             this.$http.post(`/api/nginx/run`)
                 .then((res) => {
                     this.logs.push(res.data);
-                    this.initIsRunning()
+                })
+                .catch((res) => {
+                    this.logs.push(res.data);
+                })
+                .finally(() => {
+                    this.initIsRunning();
                 });
         }
     }
@@ -94,9 +99,13 @@ export default class NginxGui implements IController {
         this.$http.post(`/api/nginx/kill`)
             .then((res) => {
                 this.logs.push(res.data);
-                this.initIsRunning()
+            })
+            .catch((res) => {
+                this.logs.push(res.data);
+            })
+            .finally(() => {
+                this.initIsRunning();
             });
-
     }
 
     initIsRunning(): void {

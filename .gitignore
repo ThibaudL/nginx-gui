@@ -3,7 +3,7 @@ node_modules
 logs/**
 server/logs/**
 nginx/logs/**
-server/db/**
+server/db/data.json
 public/dist/**
 nginx/conf/nginx.conf
 nginx/conf/nginx.tmp.conf

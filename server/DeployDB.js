@@ -1,6 +1,7 @@
 //Thanks to Christophe Genin : https://github.com/cgenin/tomcat-deploy-web/blob/master/server/deploydb.js
 const LOGGER = require('./utils/logger');
 const path = require('path');
+const fs = require('fs');
 
 const DeployDB = function DeployDB() {
 
@@ -9,6 +10,13 @@ const DeployDB = function DeployDB() {
 
     const loki = require('lokijs');
     let dbPath = path.join(__dirname, 'db/data.json');
+
+    if(!fs.existsSync(dbPath)){
+        LOGGER.debug('Copying init database because none where found.');
+        const dbInitPath = path.join(__dirname, 'db/data.init.json');
+        fs.createReadStream(dbPath).pipe(fs.createWriteStream(dbPath));
+    }
+
     const db = new loki(dbPath);
     LOGGER.debug(`DB path : ${dbPath}`);
     const createIfNotExist = function (name) {

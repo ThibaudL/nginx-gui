@@ -74,15 +74,16 @@ class NginxService {
     }
 
     runNginx(req, res) {
-        if (this.nginx) {
-            LOGGER.error('Nginx is already running');
-            res.sendStatus(204);
-            return;
-        }
-        const confFile = path.join(__dirname, '../../nginx/conf/nginx.tmp.conf');
-        const serversToStart = this.db.getNginx().data
-            .filter((server) => server.enable);
-        fs.writeFileSync(confFile, `
+        try {
+            if (this.nginx) {
+                LOGGER.error('Nginx is already running');
+                res.sendStatus(204);
+                return;
+            }
+            const confFile = path.join(__dirname, '../../nginx/conf/nginx.tmp.conf');
+            const serversToStart = this.db.getNginx().data
+                .filter((server) => server.enable);
+            fs.writeFileSync(confFile, `
 events {
     worker_connections  1024;
 }
@@ -97,36 +98,54 @@ http {
     keepalive_timeout  65;
     
     ${serversToStart
-            .map((server) => server.conf)
-            .reduce((a, b) => a + '\r\n' + b)}
+                .map((server) => server.conf)
+                .reduce((a, b) => a + '\r\n' + b)}
 }`);
-        this.nginx = childProcess.spawn(path.join(__dirname, '../../nginx/nginx.exe'), ['-c', confFile], {
-            cwd : path.join(__dirname, '../../')
-        });
-        LOGGER.debug('Running nginx with PID : ', this.nginx.pid);
-        this.nginx.stdout.on('data', (d) => LOGGER.debug('stdout', d.toString()));
-        this.nginx.stderr.on('data', (d) => LOGGER.debug('stderr', d.toString()));
-        this.nginx.on('message', (d) => GGER.debug('message', (d || '').toString()));
+            this.nginx = childProcess.spawn(path.join(__dirname, '../../nginx/nginx.exe'), ['-c', confFile], {
+                cwd: path.join(__dirname, '../../')
+            });
+            LOGGER.debug('Running nginx with PID : ', this.nginx.pid);
+            this.nginx.stdout.on('data', (d) => LOGGER.debug('stdout', d.toString()));
+            this.nginx.stderr.on('data', (d) => LOGGER.debug('stderr', d.toString()));
+            this.nginx.on('message', (d) => GGER.debug('message', (d || '').toString()));
 
-        res.send({
-            date: new Date(),
-            log: 'Started servers : ' + serversToStart.map((server) => server.displayName).join(',')
-        });
+            res.send({
+                date: new Date(),
+                log: 'Started servers : ' + serversToStart.map((server) => server.displayName).join(','),
+                status : 'success'
+            });
+        }catch (e){
+            this.nginx = null;
+            res.send({
+                date : new Date(),
+                log : 'Error starting server : '+e,
+                status : 'error'
+            })
+        }
     }
 
     killNginx(req, res) {
-        if (this.nginx) {
-            this.nginx.on('close', (d) => {
-                LOGGER.debug('closed', this.nginx.pid, 'with result =>', (d || '').toString());
-                this.nginx = null;
-                res.send({
-                    date: new Date(),
-                    log: 'Killed nginx'
+        try {
+            if (this.nginx) {
+                this.nginx.on('close', (d) => {
+                    LOGGER.debug('closed', this.nginx.pid, 'with result =>', (d || '').toString());
+                    this.nginx = null;
+                    res.send({
+                        date: new Date(),
+                        log: 'Killed nginx',
+                        status : 'success'
+                    });
                 });
-            });
-            fkill(this.nginx.pid, {tree: true, force: true});
-        } else {
-            res.sendStatus(204);
+                fkill(this.nginx.pid, {tree: true, force: true});
+            } else {
+                res.sendStatus(204);
+            }
+        }catch(e){
+            res.send({
+                date : new Date(),
+                log : 'Error killing server : '+e,
+                status : 'error'
+            })
         }
     }
 
