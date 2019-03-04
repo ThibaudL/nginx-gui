@@ -10,15 +10,16 @@
                     <span class="clearfix"></span>
                 </div>
                 <div class="panel-body">
-                    <div class="table-responsive">
+                    Nginx configurations list
+                </div>
+                <div class="table-responsive">
                         <table class="table table-bordered table-striped">
                             <thead>
                             <th class="location">Locations</th>
-                            <th>name</th>
-                            <th>port</th>
-                            <th>enabled</th>
-                            <th>edit</th>
-                            <th>conf</th>
+                            <th>Name</th>
+                            <th>Execution port</th>
+                            <th>Status</th>
+                            <th colspan="2">Actions</th>
                             </thead>
                             <tbody>
                             <tr ng-repeat-start="server in $ctrl.servers track by $index" ng-class="{'editing' : $ctrl.editServer.$loki === server.$loki}">
@@ -42,23 +43,35 @@
                                         </label>
                                     </div>
                                 </td>
-                                <td class="edit">
-                                <span class="glyphicon glyphicon-edit text-center center-block"
-                                      ng-click="$ctrl.edit(server)"
-                                      ng-if="$ctrl.editServer.$loki !== server.$loki"
-                                      uib-tooltip="Edit server configuration"
-                                      tooltip-append-to-body="true"></span>
-                                    <span class="glyphicon glyphicon-remove-circle text-center center-block"
-                                          ng-click="$ctrl.stopEdit()"
-                                          ng-if="$ctrl.editServer.$loki === server.$loki"
-                                          uib-tooltip="Cancel server configuration"
-                                          tooltip-append-to-body="true"></span>
+                                <td class="actions-container edit">
+                                    <button type="button"
+                                            class="btn btn-primary btn-md"
+                                            ng-click="$ctrl.edit(server)"
+                                            ng-if="$ctrl.editServer.$loki !== server.$loki"
+                                            uib-tooltip="Edit server configuration"
+                                            tooltip-append-to-body="true">
+                                        <span class="glyphicon glyphicon-edit" aria-hidden="true"></span>
+                                        Edit
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-default btn-md"
+                                            ng-click="$ctrl.stopEdit()"
+                                            ng-if="$ctrl.editServer.$loki === server.$loki"
+                                            uib-tooltip="Cancel server configuration"
+                                            tooltip-append-to-body="true">
+                                        <span class="glyphicon glyphicon-remove-circle" aria-hidden="true"></span>
+                                        Cancel
+                                    </button>
                                 </td>
-                                <td class="conf">
-                                <span class="glyphicon glyphicon-zoom-in text-center center-block"
-                                      ng-click="$ctrl.openConf(server)"
-                                      uib-tooltip="Open ninx configuration"
-                                      tooltip-append-to-body="true"></span>
+                                <td class="actions-container conf">
+                                    <button type="button"
+                                            class="btn btn-primary btn-md"
+                                            ng-click="$ctrl.openConf(server)"
+                                            uib-tooltip="Open ninx configuration"
+                                            tooltip-append-to-body="true">
+                                        <span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span>
+                                        Show
+                                    </button>
                                 </td>
                             </tr>
                             <tr ng-repeat-end ng-show="$ctrl.showMore === server.$loki">
@@ -66,35 +79,35 @@
                                 <td colspan="5">
                                     <table class="table location">
                                         <thead>
-                                            <tr>
-                                                <th>location</th>
-                                                <th>proxy_pass</th>
-                                                <th>enabled</th>
-                                            </tr>
+                                        <tr>
+                                            <th>location</th>
+                                            <th>proxy_pass</th>
+                                            <th>enabled</th>
+                                        </tr>
                                         </thead>
                                         <tbody>
-                                             <tr ng-repeat="location in server.locations track by $index">
-                                                <td>
-                                                    <span>{{location.location}}</span>
-                                                </td>
-                                                <td>
-                                                    <span>{{location.proxyPass}}</span>
-                                                </td>
-                                                <td>
-                                                    <div class="checkbox pull-right">
-                                                        <label>
-                                                            <input type="checkbox"
-                                                                   class="toogle"
-                                                                   data-toggle="toggle"
-                                                                   ng-change="$ctrl.changedLocation(server)"
-                                                                   data-on="Enabled"
-                                                                   data-off="Disabled"
-                                                                   ng-model="location.enable">
-                                                        </label>
-                                                    </div>
-                                                    <span class="clearfix"></span>
-                                                </td>
-                                             </tr>
+                                        <tr ng-repeat="location in server.locations track by $index">
+                                            <td>
+                                                <span>{{location.location}}</span>
+                                            </td>
+                                            <td>
+                                                <span>{{location.proxyPass}}</span>
+                                            </td>
+                                            <td>
+                                                <div class="checkbox pull-right">
+                                                    <label>
+                                                        <input type="checkbox"
+                                                               class="toogle"
+                                                               data-toggle="toggle"
+                                                               ng-change="$ctrl.changedLocation(server)"
+                                                               data-on="Enabled"
+                                                               data-off="Disabled"
+                                                               ng-model="location.enable">
+                                                    </label>
+                                                </div>
+                                                <span class="clearfix"></span>
+                                            </td>
+                                        </tr>
                                         </tbody>
                                     </table>
                                 </td>
@@ -102,7 +115,6 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
             </div>
         </div>
         <div class="col-xs-12 col-md-6" ng-if="$ctrl.mode==='nominal'">
