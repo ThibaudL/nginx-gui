@@ -12,3 +12,7 @@ Then run :
 - run ``npm run server:dev``
 
 - open [http://localhost:8080/webpack-dev-server/](http://localhost:8080/webpack-dev-server/)
+
+## Example : 
+
+![capture](https://raw.githubusercontent.com/ThibaudL/nginx-gui/master/demo/Capture.PNG)
