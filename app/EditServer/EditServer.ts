@@ -34,7 +34,7 @@ export default class EditServer implements IController {
     }
 
     save() {
-        this.server.conf = this.sample(this.server);
+        this.server.conf = EditServer.sample(this.server);
         this.$http.post('/api/nginx/servers/'+this.id, this.server)
             .then((res) => {
                 this.onSave();
@@ -52,20 +52,20 @@ export default class EditServer implements IController {
             });
     }
 
-    sample(server: Server): string {
+    public static sample(server: Server): string {
         return `server {
     listen          ${server.port};
     server_name     ${server.name};
     
 ${(server.extraConf  || '').replace(/\n/gm,'').split(/;/gm).map(t => '    '+t).join(';\r\n')}
     
-    ${server.locations.map(this.sampleLocation).join('\r\n')}
+    ${server.locations.filter(location => location.enable).map(this.sampleLocation).join('\r\n')}
 }`;
 
 
     }
 
-    private sampleLocation(location: Location): string {
+    public static sampleLocation(location: Location): string {
         return `
     location ${location.location || ''} {
         proxy_pass ${location.proxyPass || ''};     

@@ -33,6 +33,22 @@ td.conf {
     width: 60px;
 }
 
+.table.location{
+    margin:0;
+}
+
+.checkbox.pull-right>label>div{
+    width: 100px !important;
+}
+
+.table>thead>tr>th.location{
+    max-width: 50px;
+}
+
+.table.location>tbody>tr>td>*{
+    margin-right: 5px;
+}
+
 .container-fluid {
     padding-top: 20px;
 }

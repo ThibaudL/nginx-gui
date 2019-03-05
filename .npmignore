@@ -9,3 +9,4 @@ node_modules
 app
 webpacl.config.js
 tsconfig.json
+.npmrc

@@ -7,6 +7,7 @@ import Server from "./types/Server";
 import Location from "./types/Location";
 import ConfModal from "./ConfModal/ConfModal";
 import AccessLogModal from "./AccessLogModal/AccessLogModal";
+import EditServer from "./EditServer/EditServer";
 
 
 export default class NginxGui implements IController {
@@ -54,16 +55,20 @@ export default class NginxGui implements IController {
     }
 
     addServer(){
-        this.servers.push({locations:[{}]});
+        this.servers.push({locations:[{enable:true}]});
         this.save()
             .then((lastServer) => {
-                console.log(lastServer)
                 this.editServer = lastServer;
                 this.mode = "edit";
             });
         window.setTimeout(() => {
             (window as any).$('.toogle').bootstrapToggle();
         },0)
+    }
+
+    changedLocation(server){
+        server.conf = EditServer.sample(server);
+        this.save();
     }
 
     save() {
