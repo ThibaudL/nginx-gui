@@ -7,7 +7,7 @@
     "gui"
   ],
   "author": "Thibaud Lamarche (thibaud.lamarche@gmail.com)",
-  "homepage": "",
+  "homepage": "https://github.com/ThibaudL/nginx-gui",
   "bin": {
     "nginx-gui": "./server/main.js"
   },
