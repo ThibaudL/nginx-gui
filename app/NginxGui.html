@@ -5,7 +5,7 @@
                 <div class="panel-heading">
                     <h4 class="pull-left">Servers</h4>
                     <button class=" btn btn-success pull-right" ng-click="$ctrl.addServer()">
-                       Add new Server
+                        Add new Server
                     </button>
                     <span class="clearfix"></span>
                 </div>
@@ -13,15 +13,15 @@
                     Nginx configurations list
                 </div>
                 <div class="table-responsive">
-                        <table class="table table-bordered table-striped">
-                            <thead>
+                    <table class="table table-bordered table-striped">
+                        <thead>
                             <th class="location">Locations</th>
                             <th>Name</th>
                             <th>Execution port</th>
                             <th>Status</th>
                             <th colspan="2">Actions</th>
-                            </thead>
-                            <tbody>
+                        </thead>
+                        <tbody>
                             <tr ng-repeat-start="server in $ctrl.servers track by $index" ng-class="{'editing' : $ctrl.editServer.$loki === server.$loki}">
                                 <td>
                                     <span ng-click="$ctrl.showMore = server.$loki" ng-if="$ctrl.showMore !== server.$loki" class="glyphicon glyphicon-plus-sign"></span>
@@ -106,35 +106,33 @@
                                                     </label>
                                                 </div>
                                                 <span class="clearfix"></span>
-                                            </td>
-                                        </tr>
-                                        </tbody>
-                                    </table>
                                 </td>
                             </tr>
                             </tbody>
                         </table>
-                    </div>
+                </div>
             </div>
-        </div>
         <div class="col-xs-12 col-md-6" ng-if="$ctrl.mode==='nominal'">
             <div class="panel panel-default">
                 <div class="panel-heading">
                     <h4>Nginx runner</h4>
                 </div>
                 <div class="panel-body">
-                    <button class="form-control btn btn-success" type="button" ng-if="!$ctrl.isRunning"
-                            ng-click="$ctrl.runNginx()">Run Nginx
-                    </button>
-                    <button class="form-control btn btn-danger" type="button" ng-if="$ctrl.isRunning"
-                            ng-click="$ctrl.killNginx()">Kill Nginx
-                    </button>
-                    <button class="form-control btn btn-info" type="button"
-                            ng-click="$ctrl.showAccessLog()">Show Access-log
-                    </button>
+                    <div class="btn-container">
+                        <button class="form-control btn btn-success" type="button" ng-if="!$ctrl.isRunning"
+                                ng-click="$ctrl.runNginx()">Run Nginx
+                        </button>
+                        <button class="form-control btn btn-danger" type="button" ng-if="$ctrl.isRunning"
+                                ng-click="$ctrl.killNginx()">Kill Nginx
+                        </button>
+                        <button class="form-control btn btn-info" type="button"
+                                ng-click="$ctrl.showAccessLog()">Show Access-log
+                        </button>
+                    </div>
                     <hr>
                     <label> Logs :</label>
-                    <pre><div ng-repeat="log in $ctrl.logs track by $index">{{log.date | date : 'dd/MM-HH:mm'}} : {{log.log}}</div>
+                    <pre>
+                        <div ng-repeat="log in $ctrl.logs track by $index">{{log.date | date : 'dd/MM-HH:mm'}} : {{log.log}}</div>
                     </pre>
                 </div>
             </div>
