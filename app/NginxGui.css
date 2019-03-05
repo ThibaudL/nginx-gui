@@ -84,3 +84,14 @@ edit-server .location>.clearfix {
     top: -11px;
     right: 0;
 }
+
+/**
+Access log modal
+ */
+.modal-body.access-log>pre{
+    max-height: 70%;
+}
+
+.modal-body.access-log{
+    max-height: 80%;
+}
