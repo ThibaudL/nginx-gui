@@ -40,7 +40,7 @@ class NginxService {
     }
 
     getAccessLog(req, res) {
-        res.send(fs.readFileSync(path.join(__dirname, '../../logs/access.log')).toString().split('\r\n'));
+        res.send(fs.readFileSync(path.join(__dirname, '../../logs/json.log')).toString().split('\r\n'));
     }
 
     postServers(req, res) {

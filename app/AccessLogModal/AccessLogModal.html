@@ -5,9 +5,38 @@
     <div>
         <input type="text" class="form-control" ng-model="$ctrl.filter" placeholder="Filter">
     </div>
-    <pre><div ng-repeat="log in $ctrl.logs | filter : {$ : $ctrl.filter} | orderBy : $index : true track by $index ">
+    <div class="table-responsive">
+        <table class="table table-bordered ">
+            <thead>
+                <tr>
+                    <th>remote_addr</th>
+                    <th>remote_user</th>
+                    <th>time_local</th>
+                    <th>proxy_host</th>
+                    <th>request</th>
+                    <th>status</th>
+                    <th>body_bytes_sent</th>
+                    <th>http_referrer</th>
+                    <th>http_user_agent</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="log in $ctrl.logs | filter : {$ : $ctrl.filter} | orderBy : $index : true track by $index ">
+                    <td><pre>{{log.remote_addr}}</pre></td>
+                    <td><pre>{{log.remote_user}}</pre></td>
+                    <td><pre>{{log.time_local}}</pre></td>
+                    <td><pre>{{log.proxy_host}}</pre></td>
+                    <td><pre>{{log.request}}</pre></td>
+                    <td><pre>{{log.status}}</pre></td>
+                    <td><pre>{{log.body_bytes_sent}}</pre></td>
+                    <td><pre>{{log.http_referrer}}</pre></td>
+                    <td><pre>{{log.http_user_agent}}</pre></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 {{log}}
-</div></pre>
+</div>
 </div>
 <div class="modal-footer">
     <button class="btn btn-danger pull-right" ng-click="$ctrl.close()">

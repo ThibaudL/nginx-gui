@@ -7,25 +7,32 @@ export default class AccessLogModal {
     public static openModal = ($uibModal) => {
         return $uibModal.open({
             template,
-            controller : AccessLogModal,
-            controllerAs : '$ctrl',
-            size:'xl'
+            controller: AccessLogModal,
+            controllerAs: '$ctrl',
+            size: 'xl'
         });
     };
 
-    public static $inject:string[] = ['$uibModalInstance', '$http'];
+    public static $inject: string[] = ['$uibModalInstance', '$http'];
     private logs: string[];
     private filter: string = '';
-    constructor(private $uibModalInstance, private $http){
+
+    constructor(private $uibModalInstance, private $http) {
 
     }
 
-    $onInit(){
+    $onInit() {
         this.$http.get('/api/nginx/logs/access')
-            .then((res) => this.logs = res.data)
+            .then((res) => this.logs = res.data.map((access) => {
+                try {
+                    return JSON.parse(access);
+                } catch {
+                    return {};
+                }
+            }))
     }
 
-    close(){
+    close() {
         this.$uibModalInstance.close();
     }
 

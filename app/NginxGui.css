@@ -88,7 +88,13 @@ edit-server .location>.clearfix {
 /**
 Access log modal
  */
-.modal-body.access-log>pre{
+.modal-body.access-log>.table-responsive>.table>tbody>tr>td>pre{
+    background-color: transparent;
+    text-align: left;
+    border: none;
+}
+
+.modal-body.access-log>.table-responsive{
     max-height: 70%;
 }
 
