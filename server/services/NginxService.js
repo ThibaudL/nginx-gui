@@ -96,9 +96,9 @@ http {
     sendfile        on;
 
     keepalive_timeout  65;
-    log_format main '$remote_addr - $remote_user [$time_local] '
-                       '"$proxy_host" "$request" $status $body_bytes_sent '
-                       '"$http_referer" "$http_user_agent"';
+    log_format json_logs '{"remote_addr":"$remote_addr" , "remote_user" : "$remote_user", "time_local" : "$time_local", '
+                       '"proxy_host":"$proxy_host", "request": "$request", "status": "$status", "body_bytes_sent": "$body_bytes_sent", '
+                       ' "http_referrer" : "$http_referer", "http_user_agent" : "$http_user_agent"}';
 
     ${serversToStart
                 .map((server) => server.conf)
