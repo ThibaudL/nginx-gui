@@ -1,4 +1,4 @@
-![Conventional Commits](https://img.shields.io/npm/v/nginx-gui.svg)
+![version](https://img.shields.io/npm/v/nginx-gui.svg)
 
 ## How to use : 
 **With npm :**
@@ -12,3 +12,7 @@ Then run :
 - run ``npm run server:dev``
 
 - open [http://localhost:8080/webpack-dev-server/](http://localhost:8080/webpack-dev-server/)
+
+## Example : 
+
+![capture](https://raw.githubusercontent.com/ThibaudL/nginx-gui/master/demo/Capture.PNG)

@@ -1,16 +1,6 @@
-tr.editing > td .glyphicon {
-    color: white;
-}
-
-.glyphicon {
-    font-size: x-large;
-    color: #2e6da4;
-    cursor: pointer;
-}
-
-.glyphicon:hover {
-    color: #204d74;
-}
+/**
+ * Servers table configuration
+ */
 
 table.table > tbody > tr > td {
     vertical-align: middle;
@@ -28,9 +18,11 @@ td.enable {
     width: 115px;
 }
 
-td.edit,
-td.conf {
+table.table > tbody > tr > td.actions-container {
     width: 60px;
+    padding: 5px;
+    border-right: 0;
+    border-left: 0;
 }
 
 .table.location{
@@ -53,10 +45,6 @@ td.conf {
     padding-top: 20px;
 }
 
-tr.editing > td {
-    background-color: #2e6da4;
-    color: white;
-}
 
 @media (min-width: 100px) {
     .modal-dialog.modal-xl {
@@ -64,6 +52,46 @@ tr.editing > td {
     }
 }
 
+/**
+ * Server configuration
+ */
+
 edit-server .location>.clearfix {
     padding-bottom: 5px;
+}
+
+.btn-container {
+    display: flex;
+    justify-content: space-between;
+}
+
+.btn-container button {
+    margin: 0 5px;
+}
+.btn-container button:first-child {
+    margin-left: 0;
+}
+.btn-container button:last-child {
+    margin-right: 0;
+}
+
+.location {
+    position: relative;
+}
+
+.btn-trash {
+    position: absolute;
+    top: -11px;
+    right: 0;
+}
+
+/**
+Access log modal
+ */
+.modal-body.access-log>pre{
+    max-height: 70%;
+}
+
+.modal-body.access-log{
+    max-height: 80%;
 }

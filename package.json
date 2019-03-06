@@ -1,13 +1,13 @@
 {
   "name": "nginx-gui",
-  "version": "1.0.0-7",
+  "version": "1.0.0-8",
   "description": "",
   "keywords": [
     "nginx",
     "gui"
   ],
   "author": "Thibaud Lamarche (thibaud.lamarche@gmail.com)",
-  "homepage": "",
+  "homepage": "https://github.com/ThibaudL/nginx-gui",
   "bin": {
     "nginx-gui": "./server/main.js"
   },
