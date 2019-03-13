@@ -31,16 +31,14 @@
                                 <td ng-bind="server.port"></td>
                                 <td class="enable">
                                     <div class="checkbox pull-right">
-                                        <label>
-                                            <input type="checkbox"
-                                                   class="toogle"
-                                                   data-toggle="toggle"
-                                                   ng-change="$ctrl.save()"
-                                                   data-on="Enabled"
-                                                   data-off="Disabled"
-                                                   ng-disabled="$ctrl.mode === 'edit' && $ctrl.editServer.$loki === server.$loki"
-                                                   ng-model="server.enable">
-                                        </label>
+                                        <toggle
+                                                ng-change="$ctrl.save()"
+                                                label-on="Enabled"
+                                                label-off="Disabled"
+                                                ng-disabled="$ctrl.mode === 'edit' && $ctrl.editServer.$loki === server.$loki"
+                                                ng-model="server.enable"
+                                        >
+                                        </toggle>
                                     </div>
                                 </td>
                                 <td class="actions-container edit">
@@ -96,13 +94,15 @@
                                             <td>
                                                 <div class="checkbox pull-right">
                                                     <label>
-                                                        <input type="checkbox"
-                                                               class="toogle"
-                                                               data-toggle="toggle"
-                                                               ng-change="$ctrl.changedLocation(server)"
-                                                               data-on="Enabled"
-                                                               data-off="Disabled"
-                                                               ng-model="location.enable">
+                                                        <toggle
+                                                                ng-change="$ctrl.changedLocation(server)"
+                                                                label-on="Enabled"
+                                                                label-off="Disabled"
+                                                                ng-disabled="$ctrl.mode === 'edit' && $ctrl.editServer.$loki === server.$loki"
+                                                                ng-model="location.enable"
+                                                        >
+                                                        </toggle>
+
                                                     </label>
                                                 </div>
                                                 <span class="clearfix"></span>

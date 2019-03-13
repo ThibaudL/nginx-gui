@@ -11,11 +11,13 @@ import 'bootstrap-toggle/css/bootstrap-toggle.css';
 import 'bootstrap-toggle/js/bootstrap-toggle.js';
 import 'angular-block-ui/dist/angular-block-ui.css'
 import 'angular-block-ui/dist/angular-block-ui.min.js'
+import Toggle from "./toggle/toggle";
 
 const nginxguiModule = angular.module('nginxgui', ['ui.bootstrap','blockUI']);
 nginxguiModule
     .component(Nginxgui.selector, Nginxgui.component)
     .component(EditServer.selector, EditServer.component)
+    .component(Toggle.selector, Toggle.component)
     .config(['blockUIConfig',function(blockUIConfig) {
 
         // Change the default overlay message
