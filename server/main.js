@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+
+
 const fs = require('fs');
 const express = require('express'),
     app = express(),
@@ -11,6 +13,7 @@ const WebSocket = require('ws');
 const http = require('http');
 const server = http.createServer(app);
 const NginxService = require('./services/NginxService').NginxService;
+const opn = require('opn');
 
 app.use(bodyParser.json()); // for parsing application/json
 app.use('/', express.static(path.join(__dirname, '../public')));
@@ -29,9 +32,11 @@ let wsServer = new WebSocket.Server({server});
 DeployDb.init().then(() => {
     LOGGER.info("db initialized");
 
-    new NginxService(app, DeployDb, wsServer);
+    new NginxService(app, DeployDb, wsServer,process.argv[2] === '--start-nginx');
 
     LOGGER.info("Service started on port : " + port);
-    LOGGER.info("http://localhost:" + port);
+    let url = "http://localhost:" + port;
+    LOGGER.info(url);
+    opn(url)
 });
 server.listen(port, () => console.log('server listening on', server.address().port));

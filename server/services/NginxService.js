@@ -6,7 +6,7 @@ const fkill = require('fkill');
 
 class NginxService {
 
-    constructor(app, db, ws) {
+    constructor(app, db, ws, startNginx) {
         this.db = db;
         this.nginx = null;
 
@@ -36,6 +36,10 @@ class NginxService {
         app.route('/api/nginx/kill')
             .post(this.killNginx.bind(this))
         ;
+
+        if (startNginx) {
+            this.runNginx();
+        }
 
     }
 
@@ -77,7 +81,9 @@ class NginxService {
         try {
             if (this.nginx) {
                 LOGGER.error('Nginx is already running');
-                res.sendStatus(204);
+                if (res) {
+                    res.sendStatus(204);
+                }
                 return;
             }
             const confFile = path.join(__dirname, '../../nginx/conf/nginx.tmp.conf');
@@ -112,18 +118,22 @@ http {
             this.nginx.stderr.on('data', (d) => LOGGER.debug('stderr', d.toString()));
             this.nginx.on('message', (d) => GGER.debug('message', (d || '').toString()));
 
-            res.send({
-                date: new Date(),
-                log: 'Started servers : ' + serversToStart.map((server) => server.displayName).join(','),
-                status : 'success'
-            });
-        }catch (e){
+            if (res) {
+                res.send({
+                    date: new Date(),
+                    log: 'Started servers : ' + serversToStart.map((server) => server.displayName).join(','),
+                    status: 'success'
+                });
+            }
+        } catch (e) {
             this.nginx = null;
-            res.send({
-                date : new Date(),
-                log : 'Error starting server : '+e,
-                status : 'error'
-            })
+            if (res) {
+                res.send({
+                    date: new Date(),
+                    log: 'Error starting server : ' + e,
+                    status: 'error'
+                });
+            }
         }
     }
 
@@ -136,18 +146,18 @@ http {
                     res.send({
                         date: new Date(),
                         log: 'Killed nginx',
-                        status : 'success'
+                        status: 'success'
                     });
                 });
                 fkill(this.nginx.pid, {tree: true, force: true});
             } else {
                 res.sendStatus(204);
             }
-        }catch(e){
+        } catch (e) {
             res.send({
-                date : new Date(),
-                log : 'Error killing server : '+e,
-                status : 'error'
+                date: new Date(),
+                log: 'Error killing server : ' + e,
+                status: 'error'
             })
         }
     }

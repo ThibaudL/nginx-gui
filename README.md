@@ -6,6 +6,10 @@
 
 Then run : 
 ``nginx-gui`` and access http://localhost:9003
+
+Or :
+ 
+``nginx-gui --start-nginx`` for an auto start of nginx
 ## DEV MODE : 
 
 - run ``npm start``
