@@ -7,7 +7,7 @@ import Server from "./types/Server";
 import Location from "./types/Location";
 import ConfModal from "./ConfModal/ConfModal";
 import AccessLogModal from "./AccessLogModal/AccessLogModal";
-import EditServer from "./EditServer/EditServer";
+import EditServerCommon from "../app-common/EditServerCommon";
 
 
 export default class NginxGui implements IController {
@@ -67,7 +67,7 @@ export default class NginxGui implements IController {
     }
 
     changedLocation(server){
-        server.conf = EditServer.sample(server);
+        server.conf = EditServerCommon.sample(server);
         this.save();
     }
 
