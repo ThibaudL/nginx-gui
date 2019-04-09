@@ -8,7 +8,7 @@
         row-key="$loki"
       >
         <template v-slot:body="props">
-          <q-tr :props="props">
+          <q-tr class="server" :props="props">
             <q-td>
               <q-btn dense round flat :icon="props.expand ? 'arrow_drop_up' : 'arrow_drop_down'" @click="props.expand = !props.expand">
                 <q-tooltip>
@@ -41,14 +41,14 @@
               <q-btn outline  round color="primary" icon="visibility" @click="showModalConf(props.row)" />
             </q-td>
           </q-tr>
-          <q-tr v-show="props.expand" :props="props">
-            <q-th colspan="2">Location</q-th>
+          <q-tr class="location" v-show="props.expand" :props="props">
+            <q-th colspan="3" class="text-center">Location</q-th>
             <q-th colspan="2">Proxy pass</q-th>
             <q-th>Enabled</q-th>
           </q-tr>
-          <q-tr v-show="props.expand" :props="props" v-for="location in props.row.locations" :key="location.location">
-            <q-td colspan="2">
-              <div class="text-left">
+          <q-tr class="location" v-show="props.expand" :props="props" v-for="location in props.row.locations" :key="location.location">
+            <q-td colspan="3">
+              <div class="text-center">
                 <a>{{location.location}}</a>
                 <q-popup-edit v-model="location.location" buttons>
                   <q-input v-model="location.location" @change="editServer" dense autofocus counter />
@@ -92,6 +92,11 @@
     white-space: nowrap;
     cursor:pointer;
   }
+
+  tr.location{
+    background-color: #2671a617;
+  }
+
 </style>
 
 <script>
