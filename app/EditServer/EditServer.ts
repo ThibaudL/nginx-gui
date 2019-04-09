@@ -2,6 +2,7 @@ import {IComponentOptions, IController} from "angular";
 import LogEntry from "../types/LogEntry";
 import Server from "../types/Server";
 import Location from "../types/Location";
+import EditServerCommon from "../../app-common/EditServerCommon";
 
 const template = require('./EditServer.html');
 
@@ -34,7 +35,7 @@ export default class EditServer implements IController {
     }
 
     save() {
-        this.server.conf = EditServer.sample(this.server);
+        this.server.conf = EditServerCommon.sample(this.server);
         this.$http.post('/api/nginx/servers/'+this.id, this.server)
             .then((res) => {
                 this.onSave();
@@ -52,25 +53,10 @@ export default class EditServer implements IController {
             });
     }
 
-    public static sample(server: Server): string {
-        return `server {
-    listen          ${server.port};
-    server_name     ${server.name};
-    
-    access_log ./logs/json.log json_logs;
-${(server.extraConf  || '').replace(/\n/gm,'').split(/;/gm).map(t => '    '+t).join(';\r\n')}
-    
-    ${server.locations.filter(location => location.enable).map(this.sampleLocation).join('\r\n')}
-}`;
-
-
+    sample(server){
+        let s = EditServerCommon.sample(server);
+        console.log(s)
+        return s;
     }
 
-    public static sampleLocation(location: Location): string {
-        return `
-    location ${location.location || ''} {
-        proxy_pass ${location.proxyPass || ''};     
-${(location.extraConf  || '').replace(/\n/gm,'').split(/;/gm).map(t => '    '+t).join(';\r\n')}
-    }`;
-    }
 }
