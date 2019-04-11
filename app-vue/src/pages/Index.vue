@@ -7,51 +7,65 @@
         :rows-per-page-options="[]"
         row-key="$loki"
       >
-        <template v-slot:body="props">
+        <template slot="body" slot-scope="props">
           <q-tr class="server" :props="props">
             <q-td>
-              <q-btn dense round flat :icon="props.expand ? 'arrow_drop_up' : 'arrow_drop_down'" @click="props.expand = !props.expand">
+              <q-btn dense round :icon="props.expand ? 'arrow_drop_up' : 'arrow_drop_down'"
+                     @click="props.expand = !props.expand">
                 <q-tooltip>
-                  Show locations
+                  Show {{props.expand ,locations
                 </q-tooltip>
               </q-btn>
             </q-td>
             <q-td class="text-left" key="displayName" :props="props">
               <a>{{ props.row.displayName || 'SET VALUE'}}</a>
               <q-popup-edit v-model="props.row.displayName" buttons>
-                <q-input v-model="props.row.displayName" @change="save" dense autofocus counter />
+                <q-input v-model="props.row.displayName" @change="save" dense autofocus counter/>
               </q-popup-edit>
             </q-td>
             <q-td class="text-left" key="name" :props="props">
               <a>{{ props.row.name || 'SET VALUE'}}</a>
               <q-popup-edit v-model="props.row.name" buttons>
-                <q-input v-model="props.row.name" @change="save" dense autofocus counter />
+                <q-input v-model="props.row.name" @change="save" dense autofocus counter/>
               </q-popup-edit>
             </q-td>
             <q-td key="port" :props="props">
               <a>{{ props.row.port || 'SET VALUE'}}</a>
               <q-popup-edit v-model="props.row.port" buttons>
-                <q-input v-model="props.row.port" @change="save" dense autofocus counter />
+                <q-input v-model="props.row.port" @change="save" dense autofocus counter/>
               </q-popup-edit>
             </q-td>
             <q-td key="enable" class="text-center">
-              <q-toggle dense v-model="props.row.enable" @input="toggleServer(props.row)" />
+              <q-toggle dense v-model="props.row.enable" @input="toggleServer(props.row)"/>
             </q-td>
             <q-td key="showConf" class="text-center">
-              <q-btn outline  round color="primary" icon="visibility" @click="showModalConf(props.row)" />
+              <q-btn outline round color="primary" icon="visibility" @click="showModalConf(props.row)"/>
             </q-td>
           </q-tr>
-          <q-tr class="location" v-show="props.expand" :props="props">
-            <q-th colspan="3" class="text-center">Location</q-th>
+          <q-tr class="location" v-if="props.expand" :props="props">
+            <q-td class="text-center">Order</q-td>
+            <q-th colspan="2" class="text-left">Location</q-th>
             <q-th colspan="2">Proxy pass</q-th>
             <q-th>Enabled</q-th>
           </q-tr>
-          <q-tr class="location" v-show="props.expand" :props="props" v-for="location in props.row.locations" :key="location.location">
-            <q-td colspan="3">
-              <div class="text-center">
+          <q-tr class="location" v-if="props.expand" :props="props" v-for="(location,idLocation) in props.row.locations"
+                :key="location.location">
+            <q-td class="text-center">
+              <q-btn-group dense flat rounded>
+
+                <q-btn rounded icon="arrow_drop_up" v-if="idLocation>0"
+                       @click="move(props.row,location,-1)">
+                </q-btn>
+                <q-btn rounded icon="arrow_drop_down" v-if="idLocation<props.row.locations.length-1"
+                       @click="move(props.row,location,1)">
+                </q-btn>
+              </q-btn-group>
+            </q-td>
+            <q-td colspan="2">
+              <div class="text-left">
                 <a>{{location.location}}</a>
                 <q-popup-edit v-model="location.location" buttons>
-                  <q-input v-model="location.location" @change="editServer" dense autofocus counter />
+                  <q-input v-model="location.location" @change="editServer(server)" dense autofocus counter/>
                 </q-popup-edit>
               </div>
             </q-td>
@@ -59,7 +73,7 @@
               <div class="text-left">{{location.proxyPass}}</div>
             </q-td>
             <q-td>
-              <q-toggle dense v-model="location.enable" @input="toggleLocation(props.row)" />
+              <q-toggle dense v-model="location.enable" @input="toggleLocation(props.row,location)"/>
             </q-td>
           </q-tr>
         </template>
@@ -81,7 +95,7 @@
 </template>
 
 <style>
-  a{
+  a {
     color: var(--q-color-primary);
     font-weight: 500;
     text-decoration: none;
@@ -90,10 +104,10 @@
     vertical-align: center;
     transition: opacity .2s;
     white-space: nowrap;
-    cursor:pointer;
+    cursor: pointer;
   }
 
-  tr.location{
+  tr.location {
     background-color: #2671a617;
   }
 
@@ -104,6 +118,10 @@
   import axios from 'axios';
   import EditServerCommon from '../../../app-common/EditServerCommon';
 
+  Array.prototype.move = function(from, to) {
+    this.splice(to, 0, this.splice(from, 1)[0]);
+  };
+
   export default {
     name: 'PageIndex',
     data: () => {
@@ -111,20 +129,26 @@
         servers: [],
         activeServer: null,
         logs: [],
-        columns : [
-          {  },
-          { name: 'displayName', align: 'left', label: 'Display name', field: 'displayName' },
-          { name: 'name', align: 'left', label: 'Name', field: 'name' },
-          { name: 'port', label: 'Port', field: 'port' },
-          { name: 'enable', align: 'center', label: 'Enabled', field: 'enable' },
-          { name: 'showConf', align: 'center', label: 'Conf' },
+        columns: [
+          {},
+          {name: 'displayName', align: 'left', label: 'Display name', field: 'displayName'},
+          {name: 'name', align: 'left', label: 'Name', field: 'name'},
+          {name: 'port', label: 'Port', field: 'port'},
+          {name: 'enable', align: 'center', label: 'Enabled', field: 'enable'},
+          {name: 'showConf', align: 'center', label: 'Conf'},
         ],
-        showConf : false
+        showConf: false
       }
     },
     methods: {
-      editServer(server,$event){
-        console.log(server,$event)
+      move(server,location,ecart){
+        const from = server.locations.findIndex((l) => l.location === location.location && l.proxyPass === location.proxyPass);
+        const to = from + ecart;
+        server.locations.move(from,to);
+        this.editServer(server);
+      },
+      editServer(server, $event) {
+        console.log(server, $event)
         server.conf = EditServerCommon.sample(server)
         this.save()
           .then(() => {
@@ -143,7 +167,8 @@
             }
           })
         }
-      }, toggleServer(server) {
+      },
+      toggleServer(server) {
         if (server.enable) {
           this.servers
             .filter((s) => s.port === server.port && s.$loki !== server.$loki)
@@ -154,7 +179,13 @@
             this.restartIfRunnedServerHasBeenModified(server);
           });
       },
-      toggleLocation(server) {
+      toggleLocation(server,location) {
+        if(location.enable){
+          server.locations
+            .filter((l) => l.location === location.location && l.proxyPass !== location.proxyPass)
+            .forEach((l) => l.enable = false);
+        }
+        server.conf = EditServerCommon.sample(server);
         this.save()
           .then(() => {
             if (this.servers.some((s) => s.enable)) {
