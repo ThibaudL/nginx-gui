@@ -46,34 +46,51 @@
             <q-td class="text-center">Order</q-td>
             <q-th colspan="2" class="text-left">Location</q-th>
             <q-th colspan="2">Proxy pass</q-th>
-            <q-th>Enabled</q-th>
+            <q-th>
+              Enabled
+            </q-th>
+            <q-th>
+              <q-btn outline round color="primary" icon="playlist_add" @click="props.row.locations.push({location : 'FILL LOCATION',proxyPass:'FILL PORXY-PASS',enable : false});editServer(props.row)">
+                <q-tooltip>Add a new Location</q-tooltip>
+              </q-btn>
+            </q-th>
           </q-tr>
-          <q-tr class="location" v-if="props.expand" :props="props" v-for="(location,idLocation) in props.row.locations"
-                :key="location.location">
+          <q-tr class="location" v-if="props.expand" :props="props" v-for="(aLocation,idLocation) in props.row.locations"
+                :key="aLocation.location">
             <q-td class="text-center">
               <q-btn-group dense flat rounded>
 
                 <q-btn rounded icon="arrow_drop_up" v-if="idLocation>0"
-                       @click="move(props.row,location,-1)">
+                       @click="move(props.row,aLocation,-1)">
                 </q-btn>
                 <q-btn rounded icon="arrow_drop_down" v-if="idLocation<props.row.locations.length-1"
-                       @click="move(props.row,location,1)">
+                       @click="move(props.row,aLocation,1)">
                 </q-btn>
               </q-btn-group>
             </q-td>
             <q-td colspan="2">
               <div class="text-left">
-                <a>{{location.location}}</a>
-                <q-popup-edit v-model="location.location" buttons>
-                  <q-input v-model="location.location" @change="editServer(server)" dense autofocus counter/>
+                <a>{{aLocation.location}}</a>
+                <q-popup-edit v-model="aLocation.location">
+                  <q-input v-model="aLocation.location" @change="editServer(props.row)" dense autofocus counter/>
                 </q-popup-edit>
               </div>
             </q-td>
             <q-td colspan="2">
-              <div class="text-left">{{location.proxyPass}}</div>
+              <div class="text-left">
+                <a>{{aLocation.proxyPass}}</a>
+                <q-popup-edit v-model="aLocation.proxyPass">
+                  <q-input v-model="aLocation.proxyPass" @change="editServer(props.row)" dense autofocus counter/>
+                </q-popup-edit>
+              </div>
             </q-td>
             <q-td>
-              <q-toggle dense v-model="location.enable" @input="toggleLocation(props.row,location)"/>
+              <q-toggle dense v-model="aLocation.enable" @input="toggleLocation(props.row,aLocation)"/>
+            </q-td>
+            <q-td>
+              <q-btn outline round color="primary" icon="delete_sweep" @click="props.row.locations.splice(idLocation,1);editServer(props.row)">
+                <q-tooltip>Remove Location</q-tooltip>
+              </q-btn>
             </q-td>
           </q-tr>
         </template>
@@ -160,13 +177,14 @@
         this.showConf = true;
       },
       restartIfRunnedServerHasBeenModified(server) {
-        if (server.enable) {
-          this.isRunning().then((isRunning) => {
-            if (isRunning) {
-              this.restartNginx();
-            }
-          })
-        }
+        // DISABLING BECAUSE IT'S UNSTABLE
+        // if (server.enable) {
+        //   this.isRunning().then((isRunning) => {
+        //     if (isRunning) {
+        //       this.restartNginx();
+        //     }
+        //   })
+        // }
       },
       toggleServer(server) {
         if (server.enable) {
@@ -188,13 +206,13 @@
         server.conf = EditServerCommon.sample(server);
         this.save()
           .then(() => {
-            if (this.servers.some((s) => s.enable)) {
-              this.isRunning().then((isRunning) => {
-                if (isRunning) {
-                  this.restartNginx();
-                }
-              })
-            }
+            // if (this.servers.some((s) => s.enable)) {
+            //   this.isRunning().then((isRunning) => {
+            //     if (isRunning) {
+                  // this.restartNginx();
+                // }
+              // })
+            // }
           });
       },
       isRunning() {
