@@ -50,7 +50,7 @@
               Enabled
             </q-th>
             <q-th>
-              <q-btn outline round color="primary" icon="playlist_add" @click="props.row.locations.push({location : 'FILL LOCATION',proxyPass:'FILL PORXY-PASS',enable : false});editServer(props.row)">
+              <q-btn outline round color="primary" icon="playlist_add" @click="props.row.locations.push({location : 'FILL LOCATION',proxyPass:'FILL PROXY-PASS',enable : false});editServer(props.row)">
                 <q-tooltip>Add a new Location</q-tooltip>
               </q-btn>
             </q-th>
@@ -129,6 +129,7 @@
   }
 
 </style>
+
 
 <script>
 
