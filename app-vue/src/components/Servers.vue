@@ -9,7 +9,7 @@
       <q-table
         :data="servers"
         :columns="columns"
-        :rows-per-page-options="[]"
+        :pagination="{'rows-per-page':50}"
         row-key="$loki"
       >
         <template slot="body" slot-scope="props">
