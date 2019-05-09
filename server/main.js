@@ -4,7 +4,7 @@
 const fs = require('fs');
 const express = require('express'),
     app = express(),
-    port = 9003;
+    port = 9004;
 const DeployDb = require('./DeployDB');
 const bodyParser = require('body-parser');
 const LOGGER = require('./utils/logger');

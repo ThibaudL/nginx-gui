@@ -5,7 +5,7 @@ module.exports = {
     devServer: {
         contentBase: path.join(__dirname, 'public'),
         proxy: {
-            '/api': 'http://localhost:9003'
+            '/api': 'http://localhost:9004'
         },
         overlay: false
     },

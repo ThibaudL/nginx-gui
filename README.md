@@ -5,7 +5,7 @@
 ``npm i -g nginx-gui``
 
 Then run : 
-``nginx-gui`` and access http://localhost:9003
+``nginx-gui`` and access http://localhost:9004
 
 Or :
  

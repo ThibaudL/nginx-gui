@@ -78,7 +78,8 @@ module.exports = function (ctx) {
       // analyze: true,
       // extractCSS: false,
       extendWebpack (cfg) {
-      }
+      },
+      distDir : '../public/vue'
     },
 
     devServer: {
@@ -87,7 +88,7 @@ module.exports = function (ctx) {
       open: true, // opens browser window automatically
       proxy: {
         '/api': {
-          target: 'http://localhost:9003'
+          target: 'http://localhost:9004'
         }
       }
     },

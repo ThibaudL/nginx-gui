@@ -25,9 +25,10 @@
           <q-table
             :data="accessLogs"
             :columns="columns"
-            :pagination="{'rows-per-page':50}"
+            :pagination="{'rowsPerPage':0}"
+            :rows-per-page-options="[0]"
             :filter="filter"
-            row-key="time_local"
+            row-key="id"
           >
             <template v-slot:top-right>
               <q-input borderless dense debounce="300" v-model="filter" placeholder="Search">
@@ -43,10 +44,8 @@
   </div>
 </template>
 <style>
-@media (min-width: 600px) {
-  .runner .q-dialog__inner--minimized > div {
-    max-width: 80%;
-  }
+  .q-dialog.fullscreen .q-dialog__inner--minimized > div {
+  max-width: 80%;
 }
 </style>
 <script>
@@ -105,6 +104,7 @@
           });
       },
       getAccessLog(){
+        let id = 0;
         return axios.get('/api/nginx/logs/access')
           .then((res) => this.logs = res.data.map((access) => {
             try {
@@ -113,7 +113,7 @@
               return {};
             }
           }))
-          .then((logs) => this.accessLogs = logs);
+          .then((logs) => this.accessLogs = logs.map((log) => ({...log,id:id++})));
       },
       showLog(){
         this.getAccessLog().then(() => {
