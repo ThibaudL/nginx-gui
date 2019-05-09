@@ -35,7 +35,7 @@ DeployDb.init().then(() => {
     new NginxService(app, DeployDb, wsServer,process.argv[2] === '--start-nginx');
 
     LOGGER.info("Service started on port : " + port);
-    let url = "http://localhost:" + port;
+    let url = "http://localhost:" + port+'/vue';
     LOGGER.info(url);
     opn(url)
 });
