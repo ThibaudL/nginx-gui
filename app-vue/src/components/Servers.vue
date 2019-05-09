@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="q-pa-md" style="width: 100%">
-      <q-btn color="green" @click="servers.push({});save()">
+      <q-btn color="green" @click="servers.push({locations : []});save()">
         Add a new server
       </q-btn>
     </div>
