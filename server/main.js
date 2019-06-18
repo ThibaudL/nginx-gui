@@ -6,7 +6,7 @@ const express = require('express'),
     app = express(),
     port = 9004;
 const DeployDb = require('./DeployDB');
-const bodyParser = require('body-parser');
+
 const LOGGER = require('./utils/logger');
 const path = require('path');
 const WebSocket = require('ws');
@@ -15,7 +15,7 @@ const server = http.createServer(app);
 const NginxService = require('./services/NginxService').NginxService;
 const opn = require('opn');
 
-app.use(bodyParser.json()); // for parsing application/json
+
 app.use('/', express.static(path.join(__dirname, '../public')));
 
 //We need the temp folder for nginx

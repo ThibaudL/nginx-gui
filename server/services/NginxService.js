@@ -45,7 +45,7 @@ class NginxService {
 
     getAccessLog(req, res) {
         let accessLogs = fs.readFileSync(path.join(__dirname, '../../logs/json.log')).toString().split('\r\n').reverse();
-        res.send(accessLogs.splice(0,accessLogs.length> 1000 ? 1000 : accessLogs.length));
+        res.send(accessLogs.splice(0, accessLogs.length > 1000 ? 1000 : accessLogs.length));
     }
 
     postServers(req, res) {
@@ -83,7 +83,11 @@ class NginxService {
             if (this.nginx) {
                 LOGGER.error('Nginx is already running');
                 if (res) {
-                    res.sendStatus(204);
+                    res.send({
+                        date: new Date(),
+                        log: 'Nginx is already running',
+                        status: 'error'
+                    });
                 }
                 return;
             }
@@ -116,7 +120,10 @@ http {
             });
             LOGGER.debug('Running nginx with PID : ', this.nginx.pid);
             this.nginx.stdout.on('data', (d) => LOGGER.debug('stdout', d.toString()));
-            this.nginx.stderr.on('data', (d) => LOGGER.debug('stderr', d.toString()));
+            this.nginx.stderr.on('data', (d) => {
+                LOGGER.debug('stderr', d.toString());
+                this.nginx = null;
+            });
             this.nginx.on('message', (d) => GGER.debug('message', (d || '').toString()));
 
             if (res) {
@@ -157,7 +164,7 @@ http {
         } catch (e) {
             res.send({
                 date: new Date(),
-                log: 'Error killing server : ' + e,
+                log: 'Nginx isn\'t running',
                 status: 'error'
             })
         }

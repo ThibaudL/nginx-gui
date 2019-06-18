@@ -43,6 +43,9 @@
             <q-td key="enable" class="text-center">
               <q-toggle dense v-model="props.row.enable" @input="toggleServer(props.row)"/>
             </q-td>
+            <q-td key="additionnalConf" class="text-center">
+              <q-btn outline round color="primary" icon="edit" @click="showModalAdditionnalConf(props.row)"/>
+            </q-td>
             <q-td key="showConf" class="text-center">
               <q-btn outline round color="primary" icon="visibility" @click="showModalConf(props.row)"/>
             </q-td>
@@ -56,7 +59,7 @@
           <q-tr class="location" v-if="props.expand" :props="props">
             <q-td class="text-center">Order</q-td>
             <q-th colspan="2" class="text-left">Location</q-th>
-            <q-th colspan="2">Proxy pass</q-th>
+            <q-th colspan="3">Proxy pass</q-th>
             <q-th>
               Enabled
             </q-th>
@@ -89,7 +92,7 @@
                 </q-popup-edit>
               </div>
             </q-td>
-            <q-td colspan="2">
+            <q-td colspan="3">
               <div class="text-left">
                 <a>{{aLocation.proxyPass}}</a>
                 <q-popup-edit v-model="aLocation.proxyPass">
@@ -122,10 +125,37 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+    <q-dialog v-model="showAdditionnalConf">
+      <q-card v-if="activeServer" class="additionnal-conf">
+        <q-card-section>
+          <div class="text-h6">{{activeServer.displayName}}</div>
+        </q-card-section>
+        <q-card-section>
+          <q-input v-model="tmpAdditionnalConf"
+                   @change="save"
+                   type="textarea"
+                   dense autofocus counter filled/>
+        </q-card-section>
+        <!--        <q-separator inset />-->
+        <q-card-actions align="right">
+          <q-btn @click="cancelAdditionnalConf()">Cancel</q-btn>
+          <q-btn class="bg-primary text-white" @click="applyAdditionnalConf()">Apply</q-btn>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
 <style>
+  .additionnal-conf {
+    width: 40%;
+  }
+
+  /*.additionnal-conf q-card-actions>button {*/
+  /*  margin: 20px;*/
+  /*  margin: 20px;*/
+  /*}*/
+
   a {
     color: var(--q-color-primary);
     font-weight: 500;
@@ -167,10 +197,13 @@
           {name: 'name', align: 'left', label: 'Name', field: 'name'},
           {name: 'port', label: 'Port', field: 'port'},
           {name: 'enable', align: 'center', label: 'Enabled', field: 'enable'},
+          {name: 'additionnalConf', align: 'center', label: 'Additionnal Configuration'},
           {name: 'showConf', align: 'center', label: 'Conf'},
           {}
         ],
-        showConf: false
+        showConf: false,
+        showAdditionnalConf: false,
+        tmpAdditionnalConf: ''
       }
     },
     methods: {
@@ -197,6 +230,25 @@
       showModalConf(server) {
         this.activeServer = server;
         this.showConf = true;
+      },
+      showModalAdditionnalConf(server) {
+        this.activeServer = server;
+        this.tmpAdditionnalConf = this.activeServer.extraConf;
+        this.showAdditionnalConf = true;
+      },
+      cancelAdditionnalConf() {
+        this.showAdditionnalConf = false;
+        this.activeServer = null;
+        this.tmpAdditionnalConf = '';
+      },
+      applyAdditionnalConf() {
+        this.showAdditionnalConf = false;
+        let foundServer = this.servers
+          .find((s) => s.port === this.activeServer.port && s.$loki === this.activeServer.$loki);
+        foundServer.extraConf = this.tmpAdditionnalConf;
+        foundServer.conf = EditServerCommon.sample(foundServer);
+        this.save();
+        this.activeServer = null;
       },
       restartIfRunnedServerHasBeenModified(server) {
         // DISABLING BECAUSE IT'S UNSTABLE
@@ -228,13 +280,11 @@
         server.conf = EditServerCommon.sample(server);
         this.save()
           .then(() => {
-            // if (this.servers.some((s) => s.enable)) {
-            //   this.isRunning().then((isRunning) => {
-            //     if (isRunning) {
-            // this.restartNginx();
-            // }
-            // })
-            // }
+            this.isRunning().then((isRunning) => {
+              if (isRunning) {
+                this.restartNginx();
+              }
+            })
           });
       },
       isRunning() {
