@@ -14,7 +14,9 @@ const http = require('http');
 const server = http.createServer(app);
 const NginxService = require('./services/NginxService').NginxService;
 const opn = require('opn');
+const bodyParser = require('body-parser');
 
+app.use(bodyParser.json()); // for parsing application/json
 
 app.use('/', express.static(path.join(__dirname, '../public')));
 

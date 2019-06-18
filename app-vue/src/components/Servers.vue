@@ -261,15 +261,16 @@
         // }
       },
       toggleServer(server) {
+        console.log(server.enable);
         if (server.enable) {
-          this.servers
-            .filter((s) => s.port === server.port && s.$loki !== server.$loki)
+          let serversToDisable = this.servers
+            .filter((s) => s.port === server.port && s.$loki !== server.$loki);
+          console.log(this.servers.map((s) => ({loki:s.$loki,enable:s.enable})));
+          serversToDisable
             .forEach((s) => s.enable = false);
+          console.log(this.servers.map((s) => ({loki:s.$loki,enable:s.enable})));
         }
-        this.save()
-          .then(() => {
-            this.restartIfRunnedServerHasBeenModified(server);
-          });
+        this.save();
       },
       toggleLocation(server, location) {
         if (location.enable) {
@@ -278,14 +279,7 @@
             .forEach((l) => l.enable = false);
         }
         server.conf = EditServerCommon.sample(server);
-        this.save()
-          .then(() => {
-            this.isRunning().then((isRunning) => {
-              if (isRunning) {
-                this.restartNginx();
-              }
-            })
-          });
+        this.save();
       },
       isRunning() {
         return axios.get(`/api/nginx/running`).then((res) => res.data);
