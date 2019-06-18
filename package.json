@@ -12,23 +12,15 @@
     "nginx-gui": "./server/main.js"
   },
   "scripts": {
-    "build": "webpack -p -d",
-    "build:dev": "webpack -w -d",
-    "start": "webpack-dev-server -w -d --inline=false",
-    "server:dev": "node server/main.js",
-    "prepare": "npm run build"
+    "server:dev": "node server/main.js"
   },
   "dependencies": {
-    "angular": "1.7.7",
-    "angular-block-ui": "0.2.2",
-    "angular-ui-bootstrap": "2.5.6",
     "body-parser": "^1.18.2",
     "bootstrap": "3.4.1",
     "bootstrap-toggle": "2.2.2",
     "debug": "^3.0.1",
     "express": "^4.16.2",
     "fkill": "5.3.0",
-    "jquery": "3.3.1",
     "lokijs": "^1.5.1",
     "node-fetch": "^1.7.3",
     "opn": "^6.0.0",
@@ -37,7 +29,6 @@
     "ws": "^3.3.2"
   },
   "devDependencies": {
-    "@types/angular": "1.6.54",
     "@types/core-js": "0.9.41",
     "@types/node": "7.0.13",
     "awesome-typescript-loader": "5.2.1",
@@ -49,10 +40,6 @@
     "file-loader": "3.0.1",
     "source-map-loader": "^0.2.1",
     "style-loader": "0.16.1",
-    "typescript": "3.3.3333",
-    "webpack": "4.29.6",
-    "webpack-build-notifier": "0.1.30",
-    "webpack-cli": "^3.2.3",
-    "webpack-dev-server": "3.2.1"
+    "typescript": "3.3.3333"
   }
 }
