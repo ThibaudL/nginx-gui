@@ -9,7 +9,8 @@
       <q-table
         :data="servers"
         :columns="columns"
-        :pagination="{'rows-per-page':50}"
+        :pagination="pagination"
+        :rows-per-page-options="[0]"
         row-key="$loki"
       >
         <template slot="body" slot-scope="props">
@@ -177,162 +178,163 @@
 
 <script>
 
-  import axios from 'axios';
-  import EditServerCommon from '../../../app-common/EditServerCommon';
+    import axios from 'axios';
+    import EditServerCommon from '../../../app-common/EditServerCommon';
 
-  Array.prototype.move = function (from, to) {
-    this.splice(to, 0, this.splice(from, 1)[0]);
-  };
+    Array.prototype.move = function (from, to) {
+        this.splice(to, 0, this.splice(from, 1)[0]);
+    };
 
-  export default {
-    name: 'Servers',
-    data: () => {
-      return {
-        servers: [],
-        activeServer: null,
-        logs: [],
-        columns: [
-          {},
-          {name: 'displayName', align: 'left', label: 'Display name', field: 'displayName'},
-          {name: 'name', align: 'left', label: 'Name', field: 'name'},
-          {name: 'port', label: 'Port', field: 'port'},
-          {name: 'enable', align: 'center', label: 'Enabled', field: 'enable'},
-          {name: 'additionnalConf', align: 'center', label: 'Additionnal Configuration'},
-          {name: 'showConf', align: 'center', label: 'Conf'},
-          {}
-        ],
-        showConf: false,
-        showAdditionnalConf: false,
-        tmpAdditionnalConf: ''
-      }
-    },
-    methods: {
-      removeServer(key) {
-        if (key) {
-          axios.delete('/api/nginx/servers/' + key)
-            .then((res) => this.getServers());
-        }
-      },
-      move(server, location, ecart) {
-        const from = server.locations.findIndex((l) => l.location === location.location && l.proxyPass === location.proxyPass);
-        const to = from + ecart;
-        server.locations.move(from, to);
-        this.editServer(server);
-      },
-      editServer(server, $event) {
-        console.log(server, $event)
-        server.conf = EditServerCommon.sample(server)
-        this.save()
-          .then(() => {
-            this.restartIfRunnedServerHasBeenModified(server);
-          });
-      },
-      showModalConf(server) {
-        this.activeServer = server;
-        this.showConf = true;
-      },
-      showModalAdditionnalConf(server) {
-        this.activeServer = server;
-        this.tmpAdditionnalConf = this.activeServer.extraConf;
-        this.showAdditionnalConf = true;
-      },
-      cancelAdditionnalConf() {
-        this.showAdditionnalConf = false;
-        this.activeServer = null;
-        this.tmpAdditionnalConf = '';
-      },
-      applyAdditionnalConf() {
-        this.showAdditionnalConf = false;
-        let foundServer = this.servers
-          .find((s) => s.port === this.activeServer.port && s.$loki === this.activeServer.$loki);
-        foundServer.extraConf = this.tmpAdditionnalConf;
-        foundServer.conf = EditServerCommon.sample(foundServer);
-        this.save();
-        this.activeServer = null;
-      },
-      restartIfRunnedServerHasBeenModified(server) {
-        // DISABLING BECAUSE IT'S UNSTABLE
-        // if (server.enable) {
-        //   this.isRunning().then((isRunning) => {
-        //     if (isRunning) {
-        //       this.restartNginx();
-        //     }
-        //   })
-        // }
-      },
-      toggleServer(server) {
-        console.log(server.enable);
-        if (server.enable) {
-          let serversToDisable = this.servers
-            .filter((s) => s.port === server.port && s.$loki !== server.$loki);
-          console.log(this.servers.map((s) => ({loki:s.$loki,enable:s.enable})));
-          serversToDisable
-            .forEach((s) => s.enable = false);
-          console.log(this.servers.map((s) => ({loki:s.$loki,enable:s.enable})));
-        }
-        this.save();
-      },
-      toggleLocation(server, location) {
-        if (location.enable) {
-          server.locations
-            .filter((l) => l.location === location.location && l.proxyPass !== location.proxyPass)
-            .forEach((l) => l.enable = false);
-        }
-        server.conf = EditServerCommon.sample(server);
-        this.save();
-      },
-      isRunning() {
-        return axios.get(`/api/nginx/running`).then((res) => res.data);
-      },
-      runNginx() {
-        if (!this.servers.some((server) => server.enable)) {
-          this.logs.push({
-            date: new Date(),
-            log: 'Nothing to start, please enable at least one server'
-          });
-        } else {
-          axios.post(`/api/nginx/run`)
-            .then((res) => {
-              this.logs.push(res.data);
-            })
-            .catch((res) => {
-              this.logs.push(res.data);
-            })
-            .finally(() => {
+    export default {
+        name: 'Servers',
+        data: () => {
+            return {
+                servers: [],
+                activeServer: null,
+                logs: [],
+                columns: [
+                    {},
+                    {name: 'displayName', align: 'left', label: 'Display name', field: 'displayName'},
+                    {name: 'name', align: 'left', label: 'Name', field: 'name'},
+                    {name: 'port', label: 'Port', field: 'port'},
+                    {name: 'enable', align: 'center', label: 'Enabled', field: 'enable'},
+                    {name: 'additionnalConf', align: 'center', label: 'Additionnal Configuration'},
+                    {name: 'showConf', align: 'center', label: 'Conf'},
+                    {}
+                ],
+                showConf: false,
+                showAdditionnalConf: false,
+                tmpAdditionnalConf: '',
+                pagination: {'rowsPerPage': 0}
+            }
+        },
+        methods: {
+            removeServer(key) {
+                if (key) {
+                    axios.delete('/api/nginx/servers/' + key)
+                        .then((res) => this.getServers());
+                }
+            },
+            move(server, location, ecart) {
+                const from = server.locations.findIndex((l) => l.location === location.location && l.proxyPass === location.proxyPass);
+                const to = from + ecart;
+                server.locations.move(from, to);
+                this.editServer(server);
+            },
+            editServer(server, $event) {
+                console.log(server, $event)
+                server.conf = EditServerCommon.sample(server)
+                this.save()
+                    .then(() => {
+                        this.restartIfRunnedServerHasBeenModified(server);
+                    });
+            },
+            showModalConf(server) {
+                this.activeServer = server;
+                this.showConf = true;
+            },
+            showModalAdditionnalConf(server) {
+                this.activeServer = server;
+                this.tmpAdditionnalConf = this.activeServer.extraConf;
+                this.showAdditionnalConf = true;
+            },
+            cancelAdditionnalConf() {
+                this.showAdditionnalConf = false;
+                this.activeServer = null;
+                this.tmpAdditionnalConf = '';
+            },
+            applyAdditionnalConf() {
+                this.showAdditionnalConf = false;
+                let foundServer = this.servers
+                    .find((s) => s.port === this.activeServer.port && s.$loki === this.activeServer.$loki);
+                foundServer.extraConf = this.tmpAdditionnalConf;
+                foundServer.conf = EditServerCommon.sample(foundServer);
+                this.save();
+                this.activeServer = null;
+            },
+            restartIfRunnedServerHasBeenModified(server) {
+                // DISABLING BECAUSE IT'S UNSTABLE
+                // if (server.enable) {
+                //   this.isRunning().then((isRunning) => {
+                //     if (isRunning) {
+                //       this.restartNginx();
+                //     }
+                //   })
+                // }
+            },
+            toggleServer(server) {
+                console.log(server.enable);
+                if (server.enable) {
+                    let serversToDisable = this.servers
+                        .filter((s) => s.port === server.port && s.$loki !== server.$loki);
+                    console.log(this.servers.map((s) => ({loki: s.$loki, enable: s.enable})));
+                    serversToDisable
+                        .forEach((s) => s.enable = false);
+                    console.log(this.servers.map((s) => ({loki: s.$loki, enable: s.enable})));
+                }
+                this.save();
+            },
+            toggleLocation(server, location) {
+                if (location.enable) {
+                    server.locations
+                        .filter((l) => l.location === location.location && l.proxyPass !== location.proxyPass)
+                        .forEach((l) => l.enable = false);
+                }
+                server.conf = EditServerCommon.sample(server);
+                this.save();
+            },
+            isRunning() {
+                return axios.get(`/api/nginx/running`).then((res) => res.data);
+            },
+            runNginx() {
+                if (!this.servers.some((server) => server.enable)) {
+                    this.logs.push({
+                        date: new Date(),
+                        log: 'Nothing to start, please enable at least one server'
+                    });
+                } else {
+                    axios.post(`/api/nginx/run`)
+                        .then((res) => {
+                            this.logs.push(res.data);
+                        })
+                        .catch((res) => {
+                            this.logs.push(res.data);
+                        })
+                        .finally(() => {
 
-            });
-        }
-      },
-      killNginx() {
-        return axios.post(`/api/nginx/kill`)
-          .then((res) => {
-            this.logs.push(res.data);
-          })
-          .catch((res) => {
-            this.logs.push(res.data);
-          })
-          .finally(() => {
+                        });
+                }
+            },
+            killNginx() {
+                return axios.post(`/api/nginx/kill`)
+                    .then((res) => {
+                        this.logs.push(res.data);
+                    })
+                    .catch((res) => {
+                        this.logs.push(res.data);
+                    })
+                    .finally(() => {
 
-          });
-      },
-      restartNginx() {
-        this.killNginx().then(() => this.runNginx());
-      },
-      save() {
-        return axios.post('/api/nginx/servers', this.servers)
-          .then((res) => {
-            this.servers = res.data;
-            return this.servers[this.servers.length - 1];
-          });
-      },
-      getServers() {
-        axios.get('/api/nginx/servers')
-          .then((res) => res.data)
-          .then((servers) => this.servers = servers);
-      }
-    },
-    mounted() {
-      this.getServers();
+                    });
+            },
+            restartNginx() {
+                this.killNginx().then(() => this.runNginx());
+            },
+            save() {
+                return axios.post('/api/nginx/servers', this.servers)
+                    .then((res) => {
+                        this.servers = res.data;
+                        return this.servers[this.servers.length - 1];
+                    });
+            },
+            getServers() {
+                axios.get('/api/nginx/servers')
+                    .then((res) => res.data)
+                    .then((servers) => this.servers = servers);
+            }
+        },
+        mounted() {
+            this.getServers();
+        }
     }
-  }
 </script>
