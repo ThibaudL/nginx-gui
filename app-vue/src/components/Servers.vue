@@ -73,7 +73,7 @@
           </q-tr>
           <q-tr class="location" v-if="props.expand" :props="props"
                 v-for="(aLocation,idLocation) in props.row.locations"
-                :key="aLocation.location">
+                :key="aLocation.$loki">
             <q-td class="text-center">
               <q-btn-group dense flat rounded>
 
@@ -88,7 +88,7 @@
             <q-td colspan="2">
               <div class="text-left">
                 <a>{{aLocation.location}}</a>
-                <q-popup-edit v-model="aLocation.location">
+                <q-popup-edit v-model="aLocation.location" buttons persistent>
                   <q-input v-model="aLocation.location" @change="editServer(props.row)" dense autofocus counter/>
                 </q-popup-edit>
               </div>
