@@ -1,5 +1,9 @@
 ![version](https://img.shields.io/npm/v/nginx-gui.svg)
 
+## Requirings : 
+- node 10 or more
+- Windows only for now
+
 ## How to use : 
 **With npm :**
 ``npm i -g nginx-gui``
