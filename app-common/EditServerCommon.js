@@ -5,7 +5,7 @@ export default class EditServerCommon {
     server_name     ${server.name};
     
     access_log ./logs/json.log json_logs;
-${(server.extraConf || '').replace(/\n/gm, '').split(/;/gm).map(t => '    ' + t).join(';\r\n')}
+${(server.extraConf || '')}
     
     ${server.locations.filter(location => location.enable).map(this.sampleLocation).join('\r\n')}
 }`;
@@ -16,8 +16,8 @@ ${(server.extraConf || '').replace(/\n/gm, '').split(/;/gm).map(t => '    ' + t)
     static sampleLocation(location) {
         return `
     location ${location.location || ''} {
-        proxy_pass ${location.proxyPass || ''};     
-${(location.extraConf || '').replace(/\n/gm, '').split(/;/gm).map(t => '    ' + t).join(';\r\n')}
+        ${location.proxyPass ? 'proxy_pass '+location.proxyPass+';' : ''};     
+        ${(location.extraConf || '')}
     }`;
     }
 

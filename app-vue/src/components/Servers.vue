@@ -60,9 +60,12 @@
           <q-tr class="location" v-if="props.expand" :props="props">
             <q-td class="text-center">Order</q-td>
             <q-th colspan="2" class="text-left">Location</q-th>
-            <q-th colspan="3">Proxy pass</q-th>
+            <q-th colspan="2">Proxy pass</q-th>
             <q-th>
               Enabled
+            </q-th>
+            <q-th>
+              Additionnal Configuration
             </q-th>
             <q-th>
               <q-btn outline round color="primary" icon="playlist_add"
@@ -93,7 +96,7 @@
                 </q-popup-edit>
               </div>
             </q-td>
-            <q-td colspan="3">
+            <q-td colspan="2">
               <div class="text-left">
                 <a>{{aLocation.proxyPass}}</a>
                 <q-popup-edit v-model="aLocation.proxyPass">
@@ -103,6 +106,9 @@
             </q-td>
             <q-td>
               <q-toggle dense v-model="aLocation.enable" @input="toggleLocation(props.row,aLocation)"/>
+            </q-td>
+            <q-td>
+              <q-btn outline round color="primary" icon="edit" @click="showModalAdditionnalConf(props.row,aLocation)"/>
             </q-td>
             <q-td>
               <q-btn outline round color="primary" icon="delete_sweep"
@@ -127,9 +133,9 @@
       </q-card>
     </q-dialog>
     <q-dialog v-model="showAdditionnalConf">
-      <q-card v-if="activeServer" class="additionnal-conf">
+      <q-card v-if="showAdditionnalConf" class="additionnal-conf">
         <q-card-section>
-          <div class="text-h6">{{activeServer.displayName}}</div>
+          <div class="text-h6">Additionnal Configuration</div>
         </q-card-section>
         <q-card-section>
           <q-input v-model="tmpAdditionnalConf"
@@ -178,10 +184,10 @@
 
 <script>
 
-    import axios from 'axios';
-    import EditServerCommon from '../../../app-common/EditServerCommon';
+  import axios from 'axios';
+  import EditServerCommon from '../../../app-common/EditServerCommon';
 
-    Array.prototype.move = function (from, to) {
+  Array.prototype.move = function (from, to) {
         this.splice(to, 0, this.splice(from, 1)[0]);
     };
 
@@ -191,6 +197,7 @@
             return {
                 servers: [],
                 activeServer: null,
+                activeLocation: null,
                 logs: [],
                 columns: [
                     {},
@@ -233,24 +240,35 @@
                 this.activeServer = server;
                 this.showConf = true;
             },
-            showModalAdditionnalConf(server) {
-                this.activeServer = server;
+            showModalAdditionnalConf(server, location) {
+              this.activeServer = server;
+              if(location) {
+                this.activeLocation = location;
+                this.tmpAdditionnalConf = this.activeLocation.extraConf;
+              }else{
                 this.tmpAdditionnalConf = this.activeServer.extraConf;
-                this.showAdditionnalConf = true;
+              }
+              this.showAdditionnalConf = true;
             },
             cancelAdditionnalConf() {
-                this.showAdditionnalConf = false;
-                this.activeServer = null;
-                this.tmpAdditionnalConf = '';
+              this.showAdditionnalConf = false;
+              this.activeServer = null;
+              this.activeLocation = null;
+              this.tmpAdditionnalConf = '';
             },
             applyAdditionnalConf() {
-                this.showAdditionnalConf = false;
-                let foundServer = this.servers
-                    .find((s) => s.port === this.activeServer.port && s.$loki === this.activeServer.$loki);
+              this.showAdditionnalConf = false;
+              let foundServer = this.servers
+                .find((s) => s.port === this.activeServer.port && s.$loki === this.activeServer.$loki);
+              if(this.activeLocation) {
+                foundServer.locations.find((aLocation) => aLocation.location === this.activeLocation.location)
+                  .extraConf = this.tmpAdditionnalConf;
+              }else{
                 foundServer.extraConf = this.tmpAdditionnalConf;
-                foundServer.conf = EditServerCommon.sample(foundServer);
-                this.save();
-                this.activeServer = null;
+              }
+              foundServer.conf = EditServerCommon.sample(foundServer);
+              this.save();
+              this.activeServer = null;
             },
             restartIfRunnedServerHasBeenModified(server) {
                 // DISABLING BECAUSE IT'S UNSTABLE
