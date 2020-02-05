@@ -16,7 +16,7 @@ ${(server.extraConf || '')}
     static sampleLocation(location) {
         return `
     location ${location.location || ''} {
-        ${location.proxyPass ? 'proxy_pass '+location.proxyPass+';' : ''};     
+        ${location.proxyPass ? 'proxy_pass '+location.proxyPass+';' : ''}     
         ${(location.extraConf || '')}
     }`;
     }

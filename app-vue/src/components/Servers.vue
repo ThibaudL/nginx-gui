@@ -52,7 +52,7 @@
             </q-td>
             <q-td>
               <q-btn outline round color="primary" icon="delete_sweep"
-                     @click="removeServer(props.key)">
+                     @click="removeServer(props.key, props.row)">
                 <q-tooltip>Remove Server</q-tooltip>
               </q-btn>
             </q-td>
@@ -112,7 +112,7 @@
             </q-td>
             <q-td>
               <q-btn outline round color="primary" icon="delete_sweep"
-                     @click="props.row.locations.splice(idLocation,1);editServer(props.row)">
+                     @click="removeLocation(props,idLocation, aLocation)">
                 <q-tooltip>Remove Location</q-tooltip>
               </q-btn>
             </q-td>
@@ -216,11 +216,45 @@
             }
         },
         methods: {
-            removeServer(key) {
-                if (key) {
+            removeServer(key, server) {
+              if (key) {
+                this.$q.dialog({
+                  title: 'Confirm',
+                  message: 'Are you sure you want to delete the server "'+server.displayName+'"',
+                  ok: {
+                    push: true,
+                    label : 'Yes'
+                  },
+                  cancel: {
+                    push: true,
+                    color: 'negative',
+                    label : 'No'
+                  },
+                  persistent: true
+                }).onOk(() => {
                     axios.delete('/api/nginx/servers/' + key)
-                        .then((res) => this.getServers());
-                }
+                      .then((res) => this.getServers());
+                })
+              }
+            },
+            removeLocation(props, idLocation, aLocation) {
+              this.$q.dialog({
+                title: 'Confirm',
+                message: 'Are you sure you want to delete the location "'+aLocation.location+'" with proxy pass "'+aLocation.proxyPass+'"',
+                ok: {
+                  push: true,
+                  label : 'Yes'
+                },
+                cancel: {
+                  push: true,
+                  color: 'negative',
+                  label : 'No'
+                },
+                persistent: true
+              }).onOk(() => {
+                props.row.locations.splice(idLocation,1);
+                this.editServer(props.row);
+              })
             },
             move(server, location, ecart) {
                 const from = server.locations.findIndex((l) => l.location === location.location && l.proxyPass === location.proxyPass);
@@ -261,7 +295,7 @@
               let foundServer = this.servers
                 .find((s) => s.port === this.activeServer.port && s.$loki === this.activeServer.$loki);
               if(this.activeLocation) {
-                foundServer.locations.find((aLocation) => aLocation.location === this.activeLocation.location)
+                foundServer.locations.find((aLocation) => aLocation.location === this.activeLocation.location && aLocation.proxyPass === this.activeLocation.proxyPass)
                   .extraConf = this.tmpAdditionnalConf;
               }else{
                 foundServer.extraConf = this.tmpAdditionnalConf;
