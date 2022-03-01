@@ -81,7 +81,7 @@ module.exports = function (ctx) {
       // extractCSS: false,
       extendWebpack (cfg) {
       },
-      distDir : '../public/vue'
+      distDir : '../public'
     },
 
     devServer: {

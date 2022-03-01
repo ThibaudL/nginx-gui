@@ -8,6 +8,7 @@ const DeployDB = function DeployDB() {
 
     //Collections
     const nginxCollection = 'nginx';
+    const nginxHttpConf = 'nginxHttpConf';
 
     const loki = require('lokijs');
     let dbPath = path.join(homedir, 'nginx-gui');
@@ -37,6 +38,7 @@ const DeployDB = function DeployDB() {
         return new Promise((success) => {
             db.loadDatabase({}, () => {
                 createIfNotExist(nginxCollection);
+                createIfNotExist(nginxHttpConf);
                 success(db);
             });
         });
@@ -44,6 +46,10 @@ const DeployDB = function DeployDB() {
 
     this.getNginx = function () {
         return db.getCollection(nginxCollection);
+    };
+
+    this.getNginxHttpConf = function () {
+        return db.getCollection(nginxHttpConf);
     };
 
     this.insert = function (collection, item) {

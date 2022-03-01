@@ -19,6 +19,7 @@ const bodyParser = require('body-parser');
 app.use(bodyParser.json()); // for parsing application/json
 
 app.use('/', express.static(path.join(__dirname, '../public')));
+app.use('/vue', express.static(path.join(__dirname, '../public')));
 
 //We need the temp folder for nginx
 let tempPath = path.join(__dirname, '../temp');
@@ -37,7 +38,7 @@ DeployDb.init().then(() => {
     new NginxService(app, DeployDb, wsServer,process.argv[2] === '--start-nginx');
 
     LOGGER.info("Service started on port : " + port);
-    let url = "http://localhost:" + port+'/vue';
+    let url = "http://localhost:" + port+'/';
     LOGGER.info(url);
     opn(url)
 });

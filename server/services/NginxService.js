@@ -14,6 +14,10 @@ class NginxService {
             .get(this.getAccessLog.bind(this))
         ;
 
+        app.route('/api/nginx/conf')
+            .get(this.getConfFile.bind(this))
+        ;
+
         app.route('/api/nginx/servers')
             .get(this.getServers.bind(this))
             .post(this.postServers.bind(this))
@@ -23,6 +27,11 @@ class NginxService {
             .get(this.getServer.bind(this))
             .post(this.postServer.bind(this))
             .delete(this.deleteServer.bind(this))
+        ;
+
+        app.route('/api/nginx/http')
+            .get(this.getHttpConf.bind(this))
+            .post(this.postHttpConf.bind(this))
         ;
 
         app.route('/api/nginx/run')
@@ -64,6 +73,15 @@ class NginxService {
         }
     }
 
+    getHttpConf(req, res) {
+        res.send(this.db.getNginxHttpConf().data);
+    }
+
+    postHttpConf(req, res) {
+        this.db.save(this.db.getNginxHttpConf(), req.body);
+        res.sendStatus(200);
+    }
+
     deleteServer(req, res) {
         const serverToRemove = this.db.getNginx().data.find((server) => server.$loki === Number.parseInt(req.params.id, 10));
         this.db.remove(this.db.getNginx(), serverToRemove);
@@ -78,7 +96,16 @@ class NginxService {
         res.send(this.db.getNginx().data.find((server) => server.$loki === Number.parseInt(req.params.id, 10)));
     }
 
+    getConfFile(req, res) {
+        const httpConf = (this.db.getNginxHttpConf().data && this.db.getNginxHttpConf().data.length > 0)
+            ? this.db.getNginxHttpConf().data : [{additionnalHttpConf : ''}];
+        const serversToStart = this.db.getNginx().data
+            .filter((server) => server.enable);
+        res.send(this.generateConfFile(httpConf[0], serversToStart));
+    }
+
     runNginx(req, res) {
+        let messageSent = false;
         try {
             if (this.nginx) {
                 LOGGER.error('Nginx is already running');
@@ -92,9 +119,55 @@ class NginxService {
                 return;
             }
             const confFile = path.join(__dirname, '../../nginx/conf/nginx.tmp.conf');
+            const httpConf = (this.db.getNginxHttpConf().data && this.db.getNginxHttpConf().data.length > 0)
+                ? this.db.getNginxHttpConf().data : [{additionnalHttpConf : ''}];
             const serversToStart = this.db.getNginx().data
                 .filter((server) => server.enable);
-            fs.writeFileSync(confFile, `
+            fs.writeFileSync(confFile, this.generateConfFile(httpConf[0], serversToStart));
+            this.nginx = childProcess.spawn(path.join(__dirname, '../../nginx/nginx.exe'), ['-c', confFile], {
+                cwd: path.join(__dirname, '../../')
+            });
+            LOGGER.debug('Running nginx with PID : ', this.nginx.pid);
+            this.nginx.stdout.on('data', (d) => LOGGER.debug('stdout', d.toString()));
+            this.nginx.stderr.on('data', (d) => {
+                LOGGER.debug('stderr', d.toString());
+                this.nginx = null;
+                try {
+                    res.send({
+                        date: new Date(),
+                        log: 'Error starting server : ' + d.toString(),
+                        status: 'error'
+                    });
+                    messageSent = true;
+                } catch(e){
+                    console.error("Too late, we already sent an OK message...")
+                }
+            });
+            this.nginx.on('message', (d) => LOGGER.debug('message', (d || '').toString()));
+
+            setTimeout(() => {
+                if (res && !messageSent) {
+                    res.send({
+                        date: new Date(),
+                        log: 'Started servers : ' + serversToStart.map((server) => server.displayName).join(','),
+                        status: 'success'
+                    });
+                }
+            },2000);
+        } catch (e) {
+            this.nginx = null;
+            if (res) {
+                res.send({
+                    date: new Date(),
+                    log: 'Error starting server : ' + e,
+                    status: 'error'
+                });
+            }
+        }
+    }
+
+    generateConfFile(httpConf, serversToStart) {
+        return `
 events {
     worker_connections  1024;
 }
@@ -110,39 +183,13 @@ http {
     log_format json_logs '{"remote_addr":"$remote_addr" , "remote_user" : "$remote_user", "time_local" : "$time_local", '
                        '"proxy_host":"$proxy_host", "request": "$request", "status": "$status", "body_bytes_sent": "$body_bytes_sent", '
                        ' "http_referrer" : "$http_referer", "http_user_agent" : "$http_user_agent"}';
+    
+${httpConf.additionnalHttpConf || '# No additionnal http configuration'}
 
-    ${serversToStart
-                .map((server) => server.conf)
-                .reduce((a, b) => a + '\r\n' + b)}
-}`);
-            this.nginx = childProcess.spawn(path.join(__dirname, '../../nginx/nginx.exe'), ['-c', confFile], {
-                cwd: path.join(__dirname, '../../')
-            });
-            LOGGER.debug('Running nginx with PID : ', this.nginx.pid);
-            this.nginx.stdout.on('data', (d) => LOGGER.debug('stdout', d.toString()));
-            this.nginx.stderr.on('data', (d) => {
-                LOGGER.debug('stderr', d.toString());
-                this.nginx = null;
-            });
-            this.nginx.on('message', (d) => GGER.debug('message', (d || '').toString()));
-
-            if (res) {
-                res.send({
-                    date: new Date(),
-                    log: 'Started servers : ' + serversToStart.map((server) => server.displayName).join(','),
-                    status: 'success'
-                });
-            }
-        } catch (e) {
-            this.nginx = null;
-            if (res) {
-                res.send({
-                    date: new Date(),
-                    log: 'Error starting server : ' + e,
-                    status: 'error'
-                });
-            }
-        }
+${serversToStart
+            .map((server) => server.conf)
+            .reduce((a, b) => a + '\r\n' + b)}
+}`;
     }
 
     killNginx(req, res) {
@@ -171,11 +218,13 @@ http {
     }
 
     isRunning(req, res) {
-        if (this.nginx) {
-            res.send(true);
-        } else {
-            res.send(false)
-        }
+        setTimeout(() => {
+            if (this.nginx) {
+                res.send(true);
+            } else {
+                res.send(false)
+            }
+        }, 1000);
     }
 }
 
