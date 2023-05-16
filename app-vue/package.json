@@ -18,7 +18,7 @@
     "quasar": "1.1.0"
   },
   "devDependencies": {
-    "@quasar/app": "^1.0.6",
+    "@quasar/app": "^3.3.3",
     "strip-ansi": "=3.0.1"
   },
   "engines": {
