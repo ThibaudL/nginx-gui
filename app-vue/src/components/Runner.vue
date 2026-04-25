@@ -1,147 +1,165 @@
 <template>
-  <div class="q-pa-md runner" style="width: 100%">
-    <q-card>
-      <q-card-section>
-        <q-btn color="green" class="full-width" :disabled="isLoading" v-if="!isRunning" @click="runNginx">Run Nginx
-        </q-btn>
-        <q-btn color="red" class="full-width" :disabled="isLoading" v-if="isRunning" @click="killNginx">Kill Nginx
-        </q-btn>
-        <q-btn color="secondary" class="full-width" @click="showLog">Show Access log</q-btn>
-      </q-card-section>
-    </q-card>
-    <q-card>
-      <q-card-section>
-        Nginx logs :
-      </q-card-section>
-      <q-separator inset/>
-      <q-card-section>
-        <pre v-for="logEntry in logs" :class="logEntry.status">{{ logEntry.log }}</pre>
-      </q-card-section>
-    </q-card>
-    <q-dialog v-model="openedLog">
-      <q-card>
-        <q-card-section>
-          <div class="text-h6">Access Logs</div>
-        </q-card-section>
-        <q-card-section>
-          <q-table
-            :data="accessLogs"
-            :columns="columns"
-            :pagination="{'rowsPerPage':0}"
-            :rows-per-page-options="[0]"
-            :filter="filter"
-            row-key="id"
-          >
-            <template v-slot:top-left>
-              <q-input dense debounce="300" v-model="filter" label="Filter results">
-                <template v-slot:append>
-                  <q-icon name="search"/>
-                </template>
-              </q-input>
-            </template>
-          </q-table>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+  <div class="runner">
+    <Card>
+      <template #content>
+        <Button
+          v-if="!isRunning"
+          label="Run Nginx"
+          icon="pi pi-play"
+          severity="success"
+          :disabled="isLoading"
+          fluid
+          @click="runNginx"
+        />
+        <Button
+          v-else
+          label="Kill Nginx"
+          icon="pi pi-stop"
+          severity="danger"
+          :disabled="isLoading"
+          fluid
+          @click="killNginx"
+        />
+        <Button
+          label="Show Access Log"
+          icon="pi pi-list"
+          severity="secondary"
+          fluid
+          class="mt-2"
+          @click="showLog"
+        />
+      </template>
+    </Card>
+
+    <Card class="mt-2">
+      <template #title>Nginx logs</template>
+      <template #content>
+        <div class="log-list">
+          <pre
+            v-for="(entry, idx) in logs"
+            :key="idx"
+            :class="['log-entry', entry.status]"
+          >{{ entry.log }}</pre>
+          <span v-if="!logs.length" class="no-logs">No logs yet.</span>
+        </div>
+      </template>
+    </Card>
+
+    <Dialog
+      v-model:visible="logDialogOpen"
+      header="Access Logs"
+      modal
+      maximizable
+      style="width: 90vw"
+    >
+      <div class="mb-2">
+        <InputText v-model="filter" placeholder="Filter…" fluid />
+      </div>
+      <DataTable
+        :value="filteredLogs"
+        size="small"
+        scrollable
+        scroll-height="60vh"
+        :rows="200"
+      >
+        <Column field="remote_addr" header="Remote ADDR" />
+        <Column field="time_local" header="Time" />
+        <Column field="request" header="Request" />
+        <Column field="status" header="Status" style="width:5rem" />
+        <Column field="body_bytes_sent" header="Bytes" style="width:6rem" />
+        <Column field="proxy_host" header="Proxy host" />
+        <Column field="http_user_agent" header="User agent" />
+      </DataTable>
+    </Dialog>
   </div>
 </template>
-<style>
-.q-dialog.fullscreen .q-dialog__inner--minimized > div {
-  max-width: 80%;
-}
-</style>
-<script>
-import axios from 'axios';
 
-export default {
-  name: 'Runner',
-  data: () => ({
-    filter: '',
-    logs: [],
-    accessLogs: [],
-    columns: [
-      {name: 'remote_addr', align: 'left', label: 'Remote ADDR', field: 'remote_addr'},
-      {name: 'remote_user', align: 'left', label: 'Remote User', field: 'remote_user'},
-      {name: 'time_local', align: 'left', label: 'Time', field: 'time_local'},
-      {name: 'proxy_host', align: 'left', label: 'Proxy host', field: 'proxy_host'},
-      {name: 'request', align: 'left', label: 'Request', field: 'request'},
-      {name: 'status', align: 'left', label: 'Status', field: 'status'},
-      {name: 'body_bytes_sent', align: 'left', label: 'Bytes sent', field: 'body_bytes_sent'},
-      {name: 'http_referrer', align: 'left', label: 'Referer', field: 'http_referrer'},
-      {name: 'http_user_agent', align: 'left', label: 'User agent', field: 'http_user_agent'},
-    ],
-    isRunning: false,
-    isLoading: false,
-    openedLog: false
-  }),
-  methods: {
-    initIsRunning() {
-      return axios.get(`/api/nginx/running`)
-        .then((res) => res.data)
-        .then((isRunning) => {
-          this.isRunning = isRunning;
-          return this.isRunning;
-        });
-    },
-    runNginx() {
-      this.isLoading = true;
-      this.logs.push({log : 'Starting servers...'});
-      axios.post(`/api/nginx/run`)
-        .then((res) => {
-          this.logs.push(res.data);
-        })
-        .catch((res) => {
-          this.logs.push(res.data);
-        })
-        .finally(() => {
-          this.initIsRunning();
-          this.isLoading = false;
-        });
-    },
-    killNginx() {
-      this.logs.push({log : 'Killing servers...'});
-      this.isLoading = true;
-      return axios.post(`/api/nginx/kill`)
-        .then((res) => {
-          this.logs.push(res.data);
-        })
-        .catch((res) => {
-          this.logs.push(res.data);
-        })
-        .finally(() => {
-          this.initIsRunning();
-          this.isLoading = false;
-        });
-    },
-    getAccessLog() {
-      let id = 0;
-      return axios.get('/api/nginx/logs/access')
-        .then((res) => this.logs = res.data.map((access) => {
-          try {
-            return JSON.parse(access);
-          } catch {
-            return {};
-          }
-        }))
-        .then((logs) => this.accessLogs = logs.map((log) => ({...log, id: id++})));
-    },
-    showLog() {
-      this.getAccessLog().then(() => {
-        this.openedLog = true;
-      })
-    }
-  },
-  mounted() {
-    this.initIsRunning();
+<script setup>
+import { ref, computed } from 'vue'
+import Card from 'primevue/card'
+import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import InputText from 'primevue/inputtext'
+
+const isRunning = ref(false)
+const isLoading = ref(false)
+const logs = ref([])
+const accessLogs = ref([])
+const logDialogOpen = ref(false)
+const filter = ref('')
+
+const filteredLogs = computed(() => {
+  if (!filter.value) return accessLogs.value
+  const q = filter.value.toLowerCase()
+  return accessLogs.value.filter((row) =>
+    Object.values(row).some((v) => String(v).toLowerCase().includes(q))
+  )
+})
+
+async function apiFetch(url, { method = 'GET', body } = {}) {
+  const opts = { method, headers: {} }
+  if (body !== undefined) {
+    opts.headers['Content-Type'] = 'application/json'
+    opts.body = JSON.stringify(body)
+  }
+  const r = await fetch(url, opts)
+  if (r.status === 204) return null
+  return r.json()
+}
+
+async function checkIsRunning() {
+  isRunning.value = await apiFetch('/api/nginx/running')
+}
+
+async function runNginx() {
+  isLoading.value = true
+  logs.value.push({ log: 'Starting servers…' })
+  try {
+    const data = await apiFetch('/api/nginx/run', { method: 'POST' })
+    logs.value.push(data)
+  } catch {
+    logs.value.push({ log: 'Request failed', status: 'error' })
+  } finally {
+    await checkIsRunning()
+    isLoading.value = false
   }
 }
-</script>
-<style>
-.error {
-  color: red;
+
+async function killNginx() {
+  isLoading.value = true
+  logs.value.push({ log: 'Stopping nginx…' })
+  try {
+    const data = await apiFetch('/api/nginx/kill', { method: 'POST' })
+    if (data) logs.value.push(data)
+  } catch {
+    logs.value.push({ log: 'Request failed', status: 'error' })
+  } finally {
+    await checkIsRunning()
+    isLoading.value = false
+  }
 }
 
-.success {
-  color: green;
+async function showLog() {
+  const data = await apiFetch('/api/nginx/logs/access')
+  let id = 0
+  accessLogs.value = data.map((raw) => {
+    try { return { ...JSON.parse(raw), id: id++ } } catch { return { id: id++ } }
+  })
+  logDialogOpen.value = true
 }
+
+checkIsRunning()
+</script>
+
+<style scoped>
+.runner { display: flex; flex-direction: column; }
+.mt-2 { margin-top: 0.5rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.log-list { max-height: 300px; overflow-y: auto; }
+.log-entry { margin: 2px 0; font-size: 0.8rem; white-space: pre-wrap; word-break: break-all; }
+.log-entry.error { color: #e53935; }
+.log-entry.success { color: #2e7d32; }
+.no-logs { font-size: 0.85rem; color: #999; }
 </style>

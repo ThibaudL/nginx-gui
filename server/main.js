@@ -1,45 +1,43 @@
 #!/usr/bin/env node
 
-
 const fs = require('fs');
-const express = require('express'),
-    app = express(),
-    port = 9004;
-const DeployDb = require('./DeployDB');
-
-const LOGGER = require('./utils/logger');
 const path = require('path');
-const WebSocket = require('ws');
 const http = require('http');
+const express = require('express');
+const open = require('open');
+const DeployDb = require('./DeployDB');
+const LOGGER = require('./utils/logger');
+const { NginxService } = require('./services/NginxService');
+
+const app = express();
+const port = 9004;
 const server = http.createServer(app);
-const NginxService = require('./services/NginxService').NginxService;
-const opn = require('opn');
-const bodyParser = require('body-parser');
 
-app.use(bodyParser.json()); // for parsing application/json
-
+app.use(express.json());
 app.use('/', express.static(path.join(__dirname, '../public')));
 app.use('/vue', express.static(path.join(__dirname, '../public')));
 
-//We need the temp folder for nginx
-let tempPath = path.join(__dirname, '../temp');
-fs.exists(tempPath, (exists) => {
-    if (!exists) {
-        LOGGER.debug('Creating temp folder : '+tempPath);
-        fs.mkdirSync(tempPath);
-    }
-});
+const tempPath = path.join(__dirname, '../temp');
+if (!fs.existsSync(tempPath)) {
+    LOGGER.debug('Creating temp folder : ' + tempPath);
+    fs.mkdirSync(tempPath);
+}
 
+const nginxLogsPath = path.join(__dirname, '../logs');
+if (!fs.existsSync(nginxLogsPath)) {
+    LOGGER.debug('Creating logs folder : ' + nginxLogsPath);
+    fs.mkdirSync(nginxLogsPath);
+}
 
-let wsServer = new WebSocket.Server({server});
-DeployDb.init().then(() => {
-    LOGGER.info("db initialized");
+DeployDb.init()
+    .then(() => {
+        LOGGER.info('db initialized');
+        new NginxService(app, DeployDb, process.argv[2] === '--start-nginx');
+        LOGGER.info('Service started on port : ' + port);
+        const url = 'http://localhost:' + port + '/';
+        LOGGER.info(url);
+        open(url);
+    })
+    .catch((err) => LOGGER.error('Failed to initialize db: ' + err));
 
-    new NginxService(app, DeployDb, wsServer,process.argv[2] === '--start-nginx');
-
-    LOGGER.info("Service started on port : " + port);
-    let url = "http://localhost:" + port+'/';
-    LOGGER.info(url);
-    opn(url)
-});
 server.listen(port, () => console.log('server listening on', server.address().port));

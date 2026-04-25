@@ -90,9 +90,6 @@ const DeployDB = function DeployDB() {
     this.close = function () {
         db.close();
     };
-    if (DeployDB.caller !== DeployDB.getInstance) {
-        throw new Error('This object cannot be instanciated');
-    }
 };
 
 /* ************************************************************************

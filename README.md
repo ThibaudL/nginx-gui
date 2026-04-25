@@ -1,26 +1,56 @@
 ![version](https://img.shields.io/npm/v/nginx-gui.svg)
 
-## Requirings : 
-- node 10 or more
-- Windows only for now
+## Requirements
 
-## How to use : 
-**With npm :**
-``npm i -g nginx-gui``
+- Node 14+ (runtime)
+- Windows only
 
-Then run : 
-``nginx-gui`` and access http://localhost:9004/vue
+## Usage
 
-Or :
- 
-``nginx-gui --start-nginx`` for an auto start of nginx
-## DEV MODE : 
+**Install globally via npm:**
 
-- run ``npm start``
-- run ``npm run server:dev``
+```
+npm i -g nginx-gui
+```
 
-- open [http://localhost:8080/webpack-dev-server/](http://localhost:8080/webpack-dev-server/)
+Then run:
 
-## Example : 
+```
+nginx-gui
+```
+
+Access the UI at http://localhost:9004
+
+Or start nginx automatically on launch:
+
+```
+nginx-gui --start-nginx
+```
+
+## Development
+
+**Install dependencies:**
+
+```
+npm install
+cd app-vue && npm install
+```
+
+**Run backend + frontend dev servers separately:**
+
+```
+npm run server:dev        # Express API on :9004 (with --watch)
+cd app-vue && npm run dev # Vite dev server on :8881
+```
+
+The Vite dev server proxies `/api/*` to `:9004`, so only one URL is needed during development: http://localhost:8881
+
+**Build for production:**
+
+```
+npm run build   # outputs compiled frontend to /public, served by Express
+```
+
+## Example
 
 ![capture](https://raw.githubusercontent.com/ThibaudL/nginx-gui/master/demo/Capture.PNG)
