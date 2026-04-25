@@ -36,9 +36,10 @@ DeployDb.init()
         const setupService = new NginxSetupService(app, DeployDb);
         const discovery = await setupService.discoverBinary();
 
+        const autoStartSetting = !!DeployDb.getSettings().autoStartOnStartup;
         const nginxService = new NginxService(app, DeployDb, {
             binaryPath: discovery ? discovery.path : null,
-            autoStart: process.argv[2] === '--start-nginx' && !!discovery,
+            autoStart: (process.argv[2] === '--start-nginx' || autoStartSetting) && !!discovery,
         });
 
         setupService.onBinaryReady = (p) => nginxService.setBinaryPath(p);

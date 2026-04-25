@@ -19,6 +19,19 @@
       <span class="sse-counter" :class="{ active: sseEvents > 0 }">
         {{ sseEvents }} events · {{ dotCount }} dots
       </span>
+      <span class="log-disclaimer">Traffic is built from <code class="log-path-link" @click="logPathPopover.toggle($event)">access.log</code> — clear the file to reset</span>
+      <Popover ref="logPathPopover">
+        <div class="log-path-popover">
+          <span class="log-path-label">Access log path</span>
+          <div class="log-path-row">
+            <code class="log-path-value">{{ accessLogPath }}</code>
+            <button class="log-path-copy" @click="copyLogPath" :title="copied ? 'Copied!' : 'Copy'">
+              <i :class="copied ? 'pi pi-check' : 'pi pi-copy'" />
+            </button>
+          </div>
+        </div>
+      </Popover>
+      <Button icon="pi pi-list" label="Access Logs" size="small" outlined @click="emit('open-access-logs')" />
       <Button icon="pi pi-refresh" label="Refresh" size="small" outlined @click="load" :disabled="loading" />
     </div>
 
@@ -51,6 +64,19 @@ import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import * as d3 from 'd3'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+import Popover from 'primevue/popover'
+
+const emit = defineEmits(['open-access-logs'])
+
+const logPathPopover = ref(null)
+const accessLogPath  = ref('')
+const copied         = ref(false)
+
+async function copyLogPath() {
+  await navigator.clipboard.writeText(accessLogPath.value)
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 1500)
+}
 
 const svgEl   = ref(null)
 const loading = ref(false)
@@ -289,10 +315,10 @@ function renderGraph(nodes, edges) {
   }))
 
   simulation = d3.forceSimulation(nodes)
-    .force('link',      d3.forceLink(linkData).id(d => d.id).distance(130))
-    .force('charge',    d3.forceManyBody().strength(-300))
+    .force('link',      d3.forceLink(linkData).id(d => d.id).distance(150))
+    .force('charge',    d3.forceManyBody().strength(-250))
     .force('center',    d3.forceCenter(W / 2, H / 2))
-    .force('collision', d3.forceCollide(48))
+    .force('collision', d3.forceCollide(20))
 
   // 1 — edges
   const link = g.append('g').selectAll('line')
@@ -302,13 +328,15 @@ function renderGraph(nodes, edges) {
     .attr('stroke-dasharray', d => d.type === 'config' ? '6 3' : null)
     .attr('marker-end', d => `url(#arrow-${d.type === 'log' ? 'log' : 'config'})`)
     .attr('cursor', d => (d.type === 'config' && d.paths.length > 1) ? 'pointer' : 'default')
-    .on('click', (event, d) => {
-      if (d.type !== 'config' || d.paths.length <= 1) return
-      modalTitle.value = `${d.source.label || d.source.id} → ${d.target.label || d.target.id}`
-      modalPaths.value = d.paths
-      modalOpen.value = true
-      event.stopPropagation()
-    })
+    .on('click', openModal)
+
+  function openModal(event, d) {
+    if (d.type !== 'config' || d.paths.length <= 1) return
+    modalTitle.value = `${d.source.label || d.source.id} → ${d.target.label || d.target.id}`
+    modalPaths.value = d.paths
+    modalOpen.value = true
+    event.stopPropagation()
+  }
 
   // 2 — edge labels
   const linkLabel = g.append('g').selectAll('text')
@@ -316,9 +344,10 @@ function renderGraph(nodes, edges) {
     .attr('font-size', 9)
     .attr('fill', d => d.type === 'log' ? '#6366f1' : '#94a3b8')
     .attr('text-anchor', 'middle')
-    .attr('pointer-events', 'none')
     .attr('font-weight', d => (d.type === 'config' && d.paths.length > 1) ? 600 : 400)
-    .text(d => d.type === 'log' ? `${d.count} req` : (d.paths.length === 1 ? d.paths[0] : `${d.paths.length} paths ↗`))
+    .attr('cursor', d => (d.type === 'config' && d.paths.length > 1) ? 'pointer' : 'default')
+    .on('click', openModal)
+    .text(d => d.type === 'log' ? '' : (d.paths.length === 1 ? d.paths[0] : `${d.paths.length} paths ↗`))
 
   // 3 — dots layer (above edges, below nodes)
   dotsLayer = g.append('g')
@@ -386,7 +415,11 @@ async function load() {
   }
 }
 
-onMounted(() => { load(); connectSSE() })
+onMounted(() => {
+  load()
+  connectSSE()
+  apiFetch('/api/nginx/logs/access/path').then(d => { accessLogPath.value = d.path || '' }).catch(() => {})
+})
 onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
 </script>
 
@@ -442,6 +475,66 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
   white-space: nowrap;
 }
 .sse-counter.active { color: #6b7280; }
+
+.log-disclaimer {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+.log-disclaimer code {
+  font-size: 0.72rem;
+  color: #6366f1;
+}
+
+.log-path-link {
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.log-path-link:hover { color: #4f46e5; }
+
+.log-path-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 260px;
+}
+
+.log-path-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.log-path-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f3f4f6;
+  border-radius: 5px;
+  padding: 0.35rem 0.5rem;
+}
+
+.log-path-value {
+  flex: 1;
+  font-size: 0.8rem;
+  color: #111827;
+  word-break: break-all;
+}
+
+.log-path-copy {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+.log-path-copy:hover { color: #6366f1; }
 
 .topology-state {
   flex: 1;

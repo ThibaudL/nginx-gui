@@ -29,20 +29,16 @@
           @click="isRunning ? killNginx() : runNginx()"
         />
       </div>
+      <div class="sidebar-autostart">
+        <ToggleSwitch v-model="autoStartOnStartup" inputId="autoStartToggle" @change="saveAutoStart" />
+        <label for="autoStartToggle">Auto-start on launch</label>
+      </div>
     </template>
 
     <Divider class="sidebar-divider" />
 
     <!-- Navigation -->
     <nav class="sidebar-nav">
-      <button
-        class="nav-item"
-        :class="{ active: activeView === 'topology' }"
-        @click="$emit('navigate', 'topology')"
-      >
-        <i class="pi pi-sitemap" />
-        <span>Topology</span>
-      </button>
       <button
         class="nav-item"
         :class="{ active: activeView === 'servers' }"
@@ -66,6 +62,14 @@
       >
         <i class="pi pi-eye" />
         <span>View Config</span>
+      </button>
+      <button
+        class="nav-item"
+        :class="{ active: activeView === 'topology' }"
+        @click="$emit('navigate', 'topology')"
+      >
+        <i class="pi pi-sitemap" />
+        <span>Topology</span>
       </button>
     </nav>
 
@@ -125,6 +129,7 @@ import Dialog from 'primevue/dialog'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
+import ToggleSwitch from 'primevue/toggleswitch'
 import NginxSetup from './NginxSetup.vue'
 
 defineProps({ activeView: String })
@@ -135,6 +140,7 @@ const toast = useToast()
 const needsSetup = ref(false)
 const isRunning = ref(false)
 const isLoading = ref(false)
+const autoStartOnStartup = ref(false)
 const accessLogs = ref([])
 const logDialogOpen = ref(false)
 const filter = ref('')
@@ -189,6 +195,15 @@ async function checkIsRunning() {
   }
 }
 
+async function loadSettings() {
+  const data = await apiFetch('/api/nginx/settings')
+  autoStartOnStartup.value = !!data?.autoStartOnStartup
+}
+
+async function saveAutoStart() {
+  await apiFetch('/api/nginx/settings', { method: 'POST', body: { autoStartOnStartup: autoStartOnStartup.value } })
+}
+
 async function onBinaryReady() {
   needsSetup.value = false
   isRunning.value = await apiFetch('/api/nginx/running')
@@ -235,7 +250,10 @@ async function showLog() {
   logDialogOpen.value = true
 }
 
+defineExpose({ showLog })
+
 checkIsRunning()
+loadSettings()
 </script>
 
 <style scoped>
@@ -318,6 +336,16 @@ checkIsRunning()
 .status-text { font-size: 0.85rem; font-weight: 500; }
 
 .sidebar-btn-wrap { padding: 0.4rem 1rem 0.25rem; }
+
+.sidebar-autostart {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem 0.5rem;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+.sidebar-autostart label { cursor: pointer; }
 
 .sidebar-divider {
   margin: 0.25rem 0 !important;

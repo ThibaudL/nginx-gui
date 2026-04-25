@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <Runner :active-view="activeView" @navigate="onNavigate" />
+    <Runner ref="runnerRef" :active-view="activeView" @navigate="onNavigate" />
 
     <main class="main-content">
       <Servers v-if="activeView === 'servers'" />
@@ -17,7 +17,7 @@
         />
       </div>
 
-      <Topology v-else-if="activeView === 'topology'" />
+      <Topology v-else-if="activeView === 'topology'" @open-access-logs="runnerRef?.showLog()" />
 
       <div v-else-if="activeView === 'view-config'" class="config-view">
         <div class="view-header">
@@ -44,6 +44,7 @@ import Servers from './components/Servers.vue'
 import Topology from './components/Topology.vue'
 
 const activeView = ref('servers')
+const runnerRef = ref(null)
 
 const httpConf = ref({})
 const httpConfText = ref('')

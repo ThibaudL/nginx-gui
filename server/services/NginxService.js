@@ -45,6 +45,7 @@ class NginxService {
         this.logPollTimer = setInterval(() => this._pollAccessLog(), 1000);
 
         app.route('/api/nginx/logs/access/stream').get(this.streamAccessLog.bind(this));
+        app.route('/api/nginx/logs/access/path').get((req, res) => res.json({ path: NginxPaths.accessLogPath }));
         app.route('/api/nginx/logs/access').get(this.getAccessLog.bind(this));
         app.route('/api/nginx/conf').get(this.getConfFile.bind(this));
         app.route('/api/nginx/servers')
@@ -61,6 +62,9 @@ class NginxService {
         app.route('/api/nginx/run').post(this.runNginx.bind(this));
         app.route('/api/nginx/running').get(this.isRunning.bind(this));
         app.route('/api/nginx/kill').post(this.killNginx.bind(this));
+        app.route('/api/nginx/settings')
+            .get(this.getSettings.bind(this))
+            .post(this.postSettings.bind(this));
 
         if (autoStart) {
             this.runNginx();
@@ -186,7 +190,7 @@ class NginxService {
     runNginx(req, res) {
         const existingPid = readNginxPid();
         if (isProcessRunning(existingPid)) {
-            LOGGER.error('Nginx is already running');
+            LOGGER.info('Nginx is already running');
             if (res) res.send({date: new Date(), log: 'Nginx is already running', status: 'error'});
             return;
         }
@@ -309,6 +313,19 @@ ${serversToStart.map((server) => NginxConfGenerator.generateServer(server)).join
 
     isRunning(req, res) {
         res.json(isProcessRunning(readNginxPid()));
+    }
+
+    getSettings(req, res) {
+        const settings = this.db.getSettings();
+        res.json({ autoStartOnStartup: !!settings.autoStartOnStartup });
+    }
+
+    postSettings(req, res) {
+        const { autoStartOnStartup } = req.body;
+        if (typeof autoStartOnStartup === 'boolean') {
+            this.db.saveSetting('autoStartOnStartup', autoStartOnStartup);
+        }
+        res.sendStatus(200);
     }
 }
 
