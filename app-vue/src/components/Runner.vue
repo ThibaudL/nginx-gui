@@ -1,96 +1,127 @@
 <template>
-  <div class="runner">
-    <Card>
-      <template #content>
-        <NginxSetup v-if="needsSetup" @ready="onBinaryReady" />
-        <template v-else>
-          <Button
-            v-if="!isRunning"
-            label="Run Nginx"
-            icon="pi pi-play"
-            severity="success"
-            :disabled="isLoading"
-            fluid
-            @click="runNginx"
-          />
-          <Button
-            v-else
-            label="Kill Nginx"
-            icon="pi pi-stop"
-            severity="danger"
-            :disabled="isLoading"
-            fluid
-            @click="killNginx"
-          />
-          <Button
-            label="Show Access Log"
-            icon="pi pi-list"
-            severity="secondary"
-            fluid
-            class="mt-2"
-            @click="showLog"
-          />
-        </template>
-      </template>
-    </Card>
+  <aside class="sidebar">
 
-    <Card class="mt-2">
-      <template #title>Nginx logs</template>
-      <template #content>
-        <div class="log-list">
-          <pre
-            v-for="(entry, idx) in logs"
-            :key="idx"
-            :class="['log-entry', entry.status]"
-          >{{ entry.log }}</pre>
-          <span v-if="!logs.length" class="no-logs">No logs yet.</span>
-        </div>
-      </template>
-    </Card>
-
-    <Dialog
-      v-model:visible="logDialogOpen"
-      header="Access Logs"
-      modal
-      maximizable
-      style="width: 90vw"
-    >
-      <div class="mb-2">
-        <InputText v-model="filter" placeholder="Filter…" fluid />
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <i class="pi pi-desktop" />
       </div>
-      <DataTable
-        :value="filteredLogs"
-        size="small"
-        scrollable
-        scroll-height="60vh"
-        :rows="200"
+      <div>
+        <div class="logo-title">Nginx</div>
+        <div class="logo-sub">Configuration GUI</div>
+      </div>
+    </div>
+
+    <!-- Setup wizard or controls -->
+    <NginxSetup v-if="needsSetup" @ready="onBinaryReady" class="sidebar-setup" />
+    <template v-else>
+      <div class="sidebar-status">
+        <span class="status-dot" :class="{ running: isRunning }" />
+        <span class="status-text">{{ isRunning ? 'Running' : 'Stopped' }}</span>
+      </div>
+      <div class="sidebar-btn-wrap">
+        <Button
+          :label="isRunning ? 'Stop Nginx' : 'Start Nginx'"
+          :severity="isRunning ? 'danger' : 'success'"
+          :disabled="isLoading"
+          outlined
+          fluid
+          @click="isRunning ? killNginx() : runNginx()"
+        />
+      </div>
+    </template>
+
+    <Divider class="sidebar-divider" />
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+      <button
+        class="nav-item"
+        :class="{ active: activeView === 'servers' }"
+        @click="$emit('navigate', 'servers')"
       >
-        <Column field="remote_addr" header="Remote ADDR" />
-        <Column field="time_local" header="Time" />
-        <Column field="request" header="Request" />
-        <Column field="status" header="Status" style="width:5rem" />
-        <Column field="body_bytes_sent" header="Bytes" style="width:6rem" />
-        <Column field="proxy_host" header="Proxy host" />
-        <Column field="http_user_agent" header="User agent" />
-      </DataTable>
-    </Dialog>
-  </div>
+        <i class="pi pi-server" />
+        <span>Servers</span>
+      </button>
+      <button
+        class="nav-item"
+        :class="{ active: activeView === 'http-config' }"
+        @click="$emit('navigate', 'http-config')"
+      >
+        <i class="pi pi-globe" />
+        <span>HTTP Config</span>
+      </button>
+      <button
+        class="nav-item"
+        :class="{ active: activeView === 'view-config' }"
+        @click="$emit('navigate', 'view-config')"
+      >
+        <i class="pi pi-eye" />
+        <span>View Config</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-spacer" />
+
+    <!-- Access Logs button -->
+    <div class="access-logs-section">
+      <button class="access-logs-toggle" @click="showLog">
+        <i class="pi pi-chevron-right" style="font-size:0.65rem" />
+        <span>Access Logs</span>
+        <i class="pi pi-chevron-right" style="font-size:0.65rem;opacity:0.5" />
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- Access Logs Dialog -->
+  <Dialog
+    v-model:visible="logDialogOpen"
+    header="Access Logs"
+    modal
+    maximizable
+    style="width:90vw"
+  >
+    <div class="mb-2">
+      <InputText v-model="filter" placeholder="Filter…" fluid />
+    </div>
+    <DataTable
+      :value="filteredLogs"
+      size="small"
+      scrollable
+      scroll-height="60vh"
+      style="width:100%"
+    >
+      <Column field="remote_addr" header="Remote ADDR" />
+      <Column field="time_local" header="Time" />
+      <Column field="request" header="Request" />
+      <Column field="status" header="Status" style="width:5rem" />
+      <Column field="body_bytes_sent" header="Bytes" style="width:6rem" />
+      <Column field="proxy_host" header="Proxy host" />
+      <Column field="http_user_agent" header="User agent" />
+    </DataTable>
+  </Dialog>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import Card from 'primevue/card'
+import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
+import Divider from 'primevue/divider'
 import Dialog from 'primevue/dialog'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
 import NginxSetup from './NginxSetup.vue'
 
+defineProps({ activeView: String })
+defineEmits(['navigate'])
+
+const toast = useToast()
+
 const needsSetup = ref(false)
 const isRunning = ref(false)
 const isLoading = ref(false)
-const logs = ref([])
 const accessLogs = ref([])
 const logDialogOpen = ref(false)
 const filter = ref('')
@@ -129,12 +160,14 @@ async function onBinaryReady() {
 
 async function runNginx() {
   isLoading.value = true
-  logs.value.push({ log: 'Starting servers…' })
+  toast.add({ severity: 'info', summary: 'Nginx', detail: 'Starting…', life: 3000 })
   try {
     const data = await apiFetch('/api/nginx/run', { method: 'POST' })
-    logs.value.push(data)
+    const detail = data?.log || 'Started'
+    const isError = data?.status === 'error'
+    toast.add({ severity: isError ? 'error' : 'success', summary: 'Nginx', detail, life: 4000 })
   } catch {
-    logs.value.push({ log: 'Request failed', status: 'error' })
+    toast.add({ severity: 'error', summary: 'Nginx', detail: 'Request failed', life: 4000 })
   } finally {
     await checkIsRunning()
     isLoading.value = false
@@ -143,12 +176,14 @@ async function runNginx() {
 
 async function killNginx() {
   isLoading.value = true
-  logs.value.push({ log: 'Stopping nginx…' })
+  toast.add({ severity: 'info', summary: 'Nginx', detail: 'Stopping…', life: 3000 })
   try {
     const data = await apiFetch('/api/nginx/kill', { method: 'POST' })
-    if (data) logs.value.push(data)
+    const detail = data?.log || 'Stopped'
+    const isError = data?.status === 'error'
+    toast.add({ severity: isError ? 'error' : 'success', summary: 'Nginx', detail, life: 4000 })
   } catch {
-    logs.value.push({ log: 'Request failed', status: 'error' })
+    toast.add({ severity: 'error', summary: 'Nginx', detail: 'Request failed', life: 4000 })
   } finally {
     await checkIsRunning()
     isLoading.value = false
@@ -168,12 +203,138 @@ checkIsRunning()
 </script>
 
 <style scoped>
-.runner { display: flex; flex-direction: column; }
-.mt-2 { margin-top: 0.5rem; }
+.sidebar {
+  width: 210px;
+  min-width: 210px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #1a1c27;
+  color: #e2e8f0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Logo */
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  background: #22c55e;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.logo-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.logo-sub {
+  font-size: 0.62rem;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+.sidebar-setup { padding: 0.75rem; }
+
+.sidebar-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #475569;
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+
+.status-dot.running {
+  background: #22c55e;
+  animation: pulse 1.8s infinite;
+}
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+  70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+  100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+}
+
+.status-text { font-size: 0.85rem; font-weight: 500; }
+
+.sidebar-btn-wrap { padding: 0.4rem 1rem 0.25rem; }
+
+.sidebar-divider {
+  margin: 0.25rem 0 !important;
+  border-color: rgba(255,255,255,0.07) !important;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 0.5rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-item:hover { background: #252838; color: #e2e8f0; }
+.nav-item.active { background: #252838; color: #fff; }
+.nav-item i { font-size: 0.88rem; }
+
+.sidebar-spacer { flex: 1; min-height: 0.5rem; }
+
+.access-logs-section {
+  border-top: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
+.access-logs-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: color 0.15s;
+}
+.access-logs-toggle:hover { color: #94a3b8; }
+
 .mb-2 { margin-bottom: 0.5rem; }
-.log-list { max-height: 300px; overflow-y: auto; }
-.log-entry { margin: 2px 0; font-size: 0.8rem; white-space: pre-wrap; word-break: break-all; }
-.log-entry.error { color: #e53935; }
-.log-entry.success { color: #2e7d32; }
-.no-logs { font-size: 0.85rem; color: #999; }
 </style>

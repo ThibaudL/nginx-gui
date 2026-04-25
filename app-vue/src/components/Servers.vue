@@ -1,78 +1,116 @@
 <template>
   <div class="servers">
-    <!-- Action bar -->
-    <div class="action-bar">
-      <Button label="Add server" icon="pi pi-plus" severity="success" @click="addServer" />
-      <Button label="View config" icon="pi pi-eye" @click="showFullConfFile" />
-      <Button label="HTTP config" icon="pi pi-pencil" severity="warn" @click="openHttpConfDialog" />
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <IconField>
+        <InputIcon class="pi pi-search" />
+        <InputText v-model="search" placeholder="Search servers..." />
+      </IconField>
+      <Button label="Add Server" icon="pi pi-plus" severity="success" @click="addServer" />
     </div>
 
-    <!-- Server table -->
+    <!-- Servers table -->
     <DataTable
-      :value="servers"
+      :value="filteredServers"
       v-model:expandedRows="expandedRows"
       dataKey="$loki"
-      class="server-table"
+      :row-class="serverRowClass"
+      style="width:100%"
     >
+      <!-- Expander -->
       <Column expander style="width:3rem" />
 
-      <Column header="Display name" class="text-left">
+      <!-- Display Name + location count badge -->
+      <Column header="Display Name">
         <template #body="{ data }">
           <span class="editable-link" @click.stop="openEdit($event, data, 'displayName')">
             {{ data.displayName || 'SET VALUE' }}
           </span>
+          <Tag
+            v-if="data.locations?.length"
+            :value="`${data.locations.length} loc`"
+            severity="success"
+            class="loc-badge"
+          />
         </template>
       </Column>
 
-      <Column header="Name" class="text-left">
+      <!-- Server Names (monospace, truncated) -->
+      <Column header="Server Names">
         <template #body="{ data }">
-          <span class="editable-link" @click.stop="openEdit($event, data, 'name')">
-            {{ data.name || 'SET VALUE' }}
-          </span>
+          <code
+            class="server-name"
+            :title="data.name"
+            @click.stop="openEdit($event, data, 'name')"
+          >{{ data.name || 'SET VALUE' }}</code>
         </template>
       </Column>
 
-      <Column header="Port" style="width:8rem;text-align:center">
+      <!-- Port -->
+      <Column header="Port" style="width:6rem;text-align:right">
         <template #body="{ data }">
-          <span class="editable-link" @click.stop="openEdit($event, data, 'port')">
-            {{ data.port || 'SET VALUE' }}
-          </span>
+          <span
+            class="port-val"
+            :class="{ 'port-enabled': data.enable }"
+            @click.stop="openEdit($event, data, 'port')"
+          >{{ data.port || '—' }}</span>
         </template>
       </Column>
 
-      <Column header="Enabled" style="width:6rem;text-align:center">
+      <!-- Enabled -->
+      <Column header="Enabled" style="width:7rem;text-align:center">
         <template #body="{ data }">
           <ToggleSwitch v-model="data.enable" @change="toggleServer(data)" />
         </template>
       </Column>
 
-      <Column header="Addtl. conf" style="width:7rem;text-align:center">
+      <!-- Actions (hover-reveal) -->
+      <Column header="Actions" style="width:8rem">
         <template #body="{ data }">
-          <Button icon="pi pi-pencil" outlined rounded severity="warn" size="small" @click.stop="openAdditionalConf(data)" />
-        </template>
-      </Column>
-
-      <Column header="Conf" style="width:5rem;text-align:center">
-        <template #body="{ data }">
-          <Button icon="pi pi-eye" outlined rounded size="small" @click.stop="showServerConf(data)" />
-        </template>
-      </Column>
-
-      <Column style="width:5rem;text-align:center">
-        <template #body="{ data }">
-          <Button icon="pi pi-trash" outlined rounded severity="danger" size="small" @click.stop="removeServer(data)" />
+          <div class="actions-cell">
+            <Button
+              icon="pi pi-pencil"
+              v-tooltip.top="'Extra config'"
+              text rounded size="small" severity="warn"
+              @click.stop="openAdditionalConf(data)"
+            />
+            <Button
+              icon="pi pi-eye"
+              v-tooltip.top="'View conf'"
+              text rounded size="small"
+              @click.stop="showServerConf(data)"
+            />
+            <Button
+              icon="pi pi-trash"
+              v-tooltip.top="'Delete'"
+              text rounded size="small" severity="danger"
+              @click.stop="removeServer(data)"
+            />
+          </div>
         </template>
       </Column>
 
       <!-- Locations expansion -->
       <template #expansion="{ data: server }">
         <div class="location-pane">
-          <DataTable :value="server.locations" dataKey="_id" size="small">
+          <DataTable
+            :value="server.locations"
+            dataKey="_id"
+            size="small"
+            :reorderable-rows="true"
+            :row-class="locationRowClass"
+            style="width:100%"
+            @row-reorder="onRowReorder(server, $event)"
+          >
             <template #header>
-              <div style="display:flex;justify-content:flex-end">
+              <div class="loc-header">
+                <span class="loc-header-title">
+                  <i class="pi pi-map-marker" style="font-size:0.75rem" />
+                  LOCATIONS
+                </span>
                 <Button
-                  label="Add location"
-                  icon="pi pi-plus"
+                  label="+ Add location"
                   size="small"
                   outlined
                   severity="success"
@@ -81,72 +119,65 @@
               </div>
             </template>
 
-            <Column header="Order" style="width:6rem;text-align:center">
-              <template #body="{ data: loc }">
-                <Button
-                  v-if="server.locations.indexOf(loc) > 0"
-                  icon="pi pi-chevron-up"
-                  text
-                  rounded
-                  size="small"
-                  @click="moveLocation(server, loc, -1)"
-                />
-                <Button
-                  v-if="server.locations.indexOf(loc) < server.locations.length - 1"
-                  icon="pi pi-chevron-down"
-                  text
-                  rounded
-                  size="small"
-                  @click="moveLocation(server, loc, 1)"
-                />
+            <template #empty>
+              <div class="empty-locations">No locations yet — add one above</div>
+            </template>
+
+            <!-- Drag handle -->
+            <Column row-reorder style="width:2.5rem" />
+
+            <!-- Order # -->
+            <Column header="#" style="width:3.5rem">
+              <template #body="{ index }">
+                <span class="loc-num">#{{ index + 1 }}</span>
               </template>
             </Column>
 
-            <Column header="Location">
+            <!-- Path (monospace) -->
+            <Column header="Path">
               <template #body="{ data: loc }">
-                <span class="editable-link" @click.stop="openEdit($event, loc, 'location', server)">
-                  {{ loc.location }}
-                </span>
+                <code
+                  class="loc-path"
+                  @click.stop="openEdit($event, loc, 'location', server)"
+                >{{ loc.location }}</code>
+                <Tag v-if="isSsl(loc)" value="SSL" severity="success" class="ssl-badge" />
               </template>
             </Column>
 
-            <Column header="Proxy pass">
+            <!-- Proxy Pass -->
+            <Column header="Proxy Pass">
               <template #body="{ data: loc }">
-                <span class="editable-link" @click.stop="openEdit($event, loc, 'proxyPass', server)">
-                  {{ loc.proxyPass }}
-                </span>
+                <span
+                  class="proxy-pass"
+                  @click.stop="openEdit($event, loc, 'proxyPass', server)"
+                >{{ loc.proxyPass || '—' }}</span>
               </template>
             </Column>
 
+            <!-- Port (derived from proxyPass) -->
+            <Column header="Port" style="width:5rem">
+              <template #body="{ data: loc }">
+                <span class="loc-port">{{ getLocPort(loc) }}</span>
+              </template>
+            </Column>
+
+            <!-- Enabled -->
             <Column header="Enabled" style="width:6rem;text-align:center">
               <template #body="{ data: loc }">
                 <ToggleSwitch v-model="loc.enable" @change="toggleLocation(server, loc)" />
               </template>
             </Column>
 
-            <Column header="Addtl. conf" style="width:7rem;text-align:center">
+            <!-- Delete (hover-reveal) -->
+            <Column style="width:3rem">
               <template #body="{ data: loc }">
-                <Button
-                  icon="pi pi-pencil"
-                  text
-                  rounded
-                  size="small"
-                  severity="warn"
-                  @click.stop="openAdditionalConf(server, loc)"
-                />
-              </template>
-            </Column>
-
-            <Column style="width:5rem;text-align:center">
-              <template #body="{ data: loc }">
-                <Button
-                  icon="pi pi-trash"
-                  text
-                  rounded
-                  size="small"
-                  severity="danger"
-                  @click.stop="removeLocation(server, loc)"
-                />
+                <div class="actions-cell">
+                  <Button
+                    icon="pi pi-trash"
+                    text rounded size="small" severity="danger"
+                    @click.stop="removeLocation(server, loc)"
+                  />
+                </div>
               </template>
             </Column>
           </DataTable>
@@ -154,13 +185,13 @@
       </template>
     </DataTable>
 
-    <!-- Shared inline edit Popover -->
+    <!-- Inline edit Popover -->
     <Popover ref="editPopover">
       <div class="edit-popover-content">
         <InputText
           v-model="editValue"
           autofocus
-          style="width:250px"
+          style="width:260px"
           @keydown.enter="commitEdit"
         />
         <div class="edit-popover-actions">
@@ -170,23 +201,22 @@
       </div>
     </Popover>
 
-    <!-- Config viewer -->
+    <!-- Per-server conf viewer -->
     <Dialog
       v-model:visible="confDialogOpen"
-      :header="activeServer ? activeServer.displayName : 'Configuration File'"
+      :header="activeServer?.displayName || 'Configuration'"
       modal
       maximizable
       style="width:700px"
     >
-      <pre class="conf-pre">{{ activeServer ? activeServer.conf : confFileContent }}</pre>
+      <pre class="conf-pre">{{ activeServer?.conf }}</pre>
     </Dialog>
 
-    <!-- Additional conf editor (server or location) -->
+    <!-- Additional conf editor -->
     <Dialog
       v-model:visible="additionalConfOpen"
       header="Additional Configuration"
       modal
-      maximizable
       style="width:520px"
       @hide="cancelAdditionalConf"
     >
@@ -197,35 +227,23 @@
       </template>
     </Dialog>
 
-    <!-- HTTP additional conf editor -->
-    <Dialog
-      v-model:visible="httpConfOpen"
-      header="HTTP Additional Configuration"
-      modal
-      maximizable
-      style="width:520px"
-      @hide="cancelHttpConf"
-    >
-      <Textarea v-model="tmpHttpConf" rows="12" style="width:100%" />
-      <template #footer>
-        <Button label="Cancel" severity="secondary" @click="cancelHttpConf" />
-        <Button label="Apply" @click="applyHttpConf" />
-      </template>
-    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import Textarea from 'primevue/textarea'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Dialog from 'primevue/dialog'
 import Popover from 'primevue/popover'
+import Tag from 'primevue/tag'
 import EditServerCommon from '../../../app-common/EditServerCommon'
 
 const confirm = useConfirm()
@@ -243,10 +261,38 @@ async function apiFetch(url, { method = 'GET', body } = {}) {
 }
 
 const servers = ref([])
-const httpConf = ref({})
 const expandedRows = ref({})
+const search = ref('')
 
-// --- Inline edit popover ---
+const filteredServers = computed(() => {
+  if (!search.value) return servers.value
+  const q = search.value.toLowerCase()
+  return servers.value.filter(
+    (s) =>
+      (s.displayName || '').toLowerCase().includes(q) ||
+      (s.name || '').toLowerCase().includes(q)
+  )
+})
+
+const serverRowClass = (data) => (data.enable ? '' : 'row-disabled')
+const locationRowClass = (data) => (data.enable ? '' : 'row-disabled')
+
+function getLocPort(loc) {
+  if (!loc.proxyPass) return '—'
+  try {
+    const url = new URL(loc.proxyPass)
+    if (url.port) return url.port
+    return url.protocol === 'https:' ? '443' : '80'
+  } catch {
+    return '—'
+  }
+}
+
+function isSsl(loc) {
+  return getLocPort(loc) === '443' || (loc.proxyPass || '').startsWith('https://')
+}
+
+// Inline edit popover
 const editPopover = ref(null)
 const editCtx = ref(null)
 const editValue = ref('')
@@ -266,26 +312,18 @@ function commitEdit() {
   save()
 }
 
-// --- Config viewer dialog ---
+// Per-server conf viewer
 const confDialogOpen = ref(false)
 const activeServer = ref(null)
-const confFileContent = ref('')
 
 function showServerConf(server) {
   activeServer.value = server
-  confFileContent.value = ''
   confDialogOpen.value = true
 }
 
-async function showFullConfFile() {
-  confFileContent.value = await apiFetch('/api/nginx/conf')
-  activeServer.value = null
-  confDialogOpen.value = true
-}
-
-// --- Additional conf dialog ---
+// Additional conf dialog
 const additionalConfOpen = ref(false)
-const additionalConfCtx = ref(null) // { server, location? }
+const additionalConfCtx = ref(null)
 const tmpAdditionalConf = ref('')
 
 function openAdditionalConf(server, location = null) {
@@ -313,29 +351,16 @@ function applyAdditionalConf() {
   save()
 }
 
-// --- HTTP conf dialog ---
-const httpConfOpen = ref(false)
-const tmpHttpConf = ref('')
-
-function openHttpConfDialog() {
-  tmpHttpConf.value = httpConf.value.additionnalHttpConf || ''
-  httpConfOpen.value = true
-}
-
-function cancelHttpConf() {
-  httpConfOpen.value = false
-  tmpHttpConf.value = ''
-}
-
-function applyHttpConf() {
-  httpConf.value.additionnalHttpConf = tmpHttpConf.value
-  apiFetch('/api/nginx/http', { method: 'POST', body: httpConf.value })
-  httpConfOpen.value = false
-}
-
-// --- Server CRUD ---
+// Server CRUD
 function addServer() {
-  servers.value.push({ locations: [] })
+  servers.value.push({
+    displayName: 'New Server',
+    name: 'example.com',
+    port: '80',
+    enable: false,
+    extraConf: '',
+    locations: []
+  })
   save()
 }
 
@@ -346,7 +371,6 @@ function removeServer(server) {
     header: 'Confirm',
     acceptLabel: 'Yes',
     rejectLabel: 'No',
-    rejectProps: { severity: 'danger' },
     accept: () => {
       apiFetch('/api/nginx/servers/' + server.$loki, { method: 'DELETE' }).then(loadServers)
     }
@@ -362,9 +386,15 @@ function toggleServer(server) {
   save()
 }
 
-// --- Location CRUD ---
+// Location CRUD
 async function addLocation(server) {
-  server.locations.push({ _id: Date.now() + Math.random(), location: '/path', proxyPass: 'http://target', enable: false })
+  server.locations.push({
+    _id: Date.now() + Math.random(),
+    location: '/path',
+    proxyPass: 'http://target',
+    enable: false,
+    extraConf: ''
+  })
   server.conf = EditServerCommon.sample(server)
   await save()
 }
@@ -375,7 +405,6 @@ function removeLocation(server, loc) {
     header: 'Confirm',
     acceptLabel: 'Yes',
     rejectLabel: 'No',
-    rejectProps: { severity: 'danger' },
     accept: async () => {
       const idx = server.locations.indexOf(loc)
       if (idx !== -1) server.locations.splice(idx, 1)
@@ -385,13 +414,10 @@ function removeLocation(server, loc) {
   })
 }
 
-async function moveLocation(server, loc, direction) {
-  const arr = server.locations
-  const index = arr.indexOf(loc)
-  const newIndex = index + direction
-  arr.splice(newIndex, 0, arr.splice(index, 1)[0])
+function onRowReorder(server, event) {
+  server.locations = event.value
   server.conf = EditServerCommon.sample(server)
-  await save()
+  save()
 }
 
 async function toggleLocation(server, location) {
@@ -404,62 +430,181 @@ async function toggleLocation(server, location) {
   await save()
 }
 
-// --- API ---
+// API
 async function save() {
   servers.value = await apiFetch('/api/nginx/servers', { method: 'POST', body: servers.value })
 }
 
 async function loadServers() {
   const data = await apiFetch('/api/nginx/servers')
-  data.forEach((s) => s.locations.forEach((l) => { if (!l._id) l._id = Date.now() + Math.random() }))
+  data.forEach((s) =>
+    s.locations.forEach((l) => { if (!l._id) l._id = Date.now() + Math.random() })
+  )
   servers.value = data
 }
 
-async function loadHttpConf() {
-  const data = await apiFetch('/api/nginx/http')
-  httpConf.value = data && data.length > 0 ? data[0] : {}
-}
-
-onMounted(() => {
-  loadServers()
-  loadHttpConf()
-})
+onMounted(loadServers)
 </script>
 
 <style scoped>
-.servers { padding: 0.5rem; }
-
-.action-bar {
+.servers {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  height: 100%;
 }
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* Server names */
+.server-name {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #374151;
+  cursor: pointer;
+  display: block;
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.server-name:hover { color: var(--p-primary-color, #6366f1); }
 
 .editable-link {
   color: var(--p-primary-color, #6366f1);
   font-weight: 500;
   cursor: pointer;
-  border-bottom: 1px solid currentColor;
+}
+.editable-link:hover { text-decoration: underline; }
+
+.loc-badge {
+  font-size: 0.68rem;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.port-val {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  font-family: monospace;
+}
+.port-val.port-enabled { color: #16a34a; }
+
+/* Hover-reveal actions */
+.actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+:deep(.p-datatable-tbody > tr:hover) .actions-cell {
+  opacity: 1;
+}
+
+/* Disabled rows */
+:deep(.row-disabled) {
+  opacity: 0.55;
+}
+
+/* Location expansion pane */
+.location-pane {
+  background: #f9fafb;
+  border-top: 2px solid #e5e7eb;
+}
+
+.loc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.loc-header-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-transform: uppercase;
+}
+
+.loc-num {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  font-family: monospace;
+}
+
+.loc-path {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #111827;
+  font-weight: 600;
+  cursor: pointer;
+}
+.loc-path:hover { color: var(--p-primary-color, #6366f1); }
+
+.ssl-badge {
+  font-size: 0.63rem;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+}
+
+.proxy-pass {
+  font-size: 0.83rem;
+  color: #374151;
+  cursor: pointer;
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-.editable-link:hover { opacity: 0.75; }
+.proxy-pass:hover { color: var(--p-primary-color, #6366f1); }
 
-.location-pane {
-  background: rgba(99, 102, 241, 0.05);
-  padding: 0.75rem 1rem;
+.loc-port {
+  font-size: 0.82rem;
+  color: #374151;
+  font-family: monospace;
 }
 
-.edit-popover-content { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.25rem; }
+.empty-locations {
+  text-align: center;
+  color: #9ca3af;
+  padding: 1.5rem;
+  font-size: 0.88rem;
+}
+
+/* Edit popover */
+.edit-popover-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.25rem;
+}
 .edit-popover-actions { display: flex; gap: 0.5rem; }
 
+/* Conf pre */
 .conf-pre {
   font-family: monospace;
   font-size: 0.82rem;
   white-space: pre;
   overflow: auto;
   max-height: 70vh;
-  background: var(--p-surface-100, #f3f4f6);
+  background: #f3f4f6;
   padding: 0.75rem;
   border-radius: 4px;
 }
