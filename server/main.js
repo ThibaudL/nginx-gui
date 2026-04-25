@@ -8,6 +8,8 @@ const open = require('open');
 const DeployDb = require('./DeployDB');
 const LOGGER = require('./utils/logger');
 const { NginxService } = require('./services/NginxService');
+const { NginxSetupService } = require('./services/NginxSetupService');
+const NginxPaths = require('./services/NginxPaths');
 
 const app = express();
 const port = 9004;
@@ -17,22 +19,30 @@ app.use(express.json());
 app.use('/', express.static(path.join(__dirname, '../public')));
 app.use('/vue', express.static(path.join(__dirname, '../public')));
 
-const tempPath = path.join(__dirname, '../temp');
-if (!fs.existsSync(tempPath)) {
-    LOGGER.debug('Creating temp folder : ' + tempPath);
-    fs.mkdirSync(tempPath);
-}
-
-const nginxLogsPath = path.join(__dirname, '../logs');
-if (!fs.existsSync(nginxLogsPath)) {
-    LOGGER.debug('Creating logs folder : ' + nginxLogsPath);
-    fs.mkdirSync(nginxLogsPath);
-}
+fs.mkdirSync(NginxPaths.logsDir, { recursive: true });
 
 DeployDb.init()
-    .then(() => {
+    .then(async () => {
         LOGGER.info('db initialized');
-        new NginxService(app, DeployDb, process.argv[2] === '--start-nginx');
+
+        // Migrate old per-server access_log directives (moved to http block in generated config)
+        DeployDb.migrateConf((server, col) => {
+            if (server.conf && /access_log.*json\.log/.test(server.conf)) {
+                server.conf = server.conf.replace(/[ \t]*access_log[^\n]*\n?/g, '');
+                col.update(server);
+            }
+        });
+
+        const setupService = new NginxSetupService(app, DeployDb);
+        const discovery = await setupService.discoverBinary();
+
+        const nginxService = new NginxService(app, DeployDb, {
+            binaryPath: discovery ? discovery.path : null,
+            autoStart: process.argv[2] === '--start-nginx' && !!discovery,
+        });
+
+        setupService.onBinaryReady = (p) => nginxService.setBinaryPath(p);
+
         LOGGER.info('Service started on port : ' + port);
         const url = 'http://localhost:' + port + '/';
         LOGGER.info(url);

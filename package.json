@@ -17,6 +17,7 @@
     "build": "npm run build --prefix app-vue"
   },
   "dependencies": {
+    "adm-zip": "^0.5.17",
     "express": "^4.21.2",
     "fkill": "^7.2.0",
     "lokijs": "^1.5.12",

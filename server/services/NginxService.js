@@ -3,12 +3,17 @@ const path = require('path');
 const LOGGER = require('../utils/logger');
 const childProcess = require('child_process');
 const fkill = require('fkill');
+const NginxPaths = require('./NginxPaths');
+const {rotateNginxLog} = require('./NginxLogRotation');
 
 class NginxService {
 
-    constructor(app, db, startNginx) {
+    constructor(app, db, {binaryPath = null, autoStart = false} = {}) {
         this.db = db;
+        this.binaryPath = binaryPath;
         this.nginx = null;
+        this.rotationTimer = setInterval(() => rotateNginxLog(this.nginx, this.binaryPath), 60 * 60 * 1000);
+        LOGGER.info(`NginxPaths : `,NginxPaths)
 
         app.route('/api/nginx/logs/access').get(this.getAccessLog.bind(this));
         app.route('/api/nginx/conf').get(this.getConfFile.bind(this));
@@ -26,18 +31,23 @@ class NginxService {
         app.route('/api/nginx/running').get(this.isRunning.bind(this));
         app.route('/api/nginx/kill').post(this.killNginx.bind(this));
 
-        if (startNginx) {
+        if (autoStart) {
             this.runNginx();
         }
     }
 
+    setBinaryPath(binaryPath) {
+        this.binaryPath = binaryPath;
+    }
+
     getAccessLog(req, res) {
         try {
-            const logPath = path.join(__dirname, '../../logs/json.log');
+            const logPath = NginxPaths.accessLogPath;
             const content = fs.existsSync(logPath) ? fs.readFileSync(logPath).toString() : '';
             const logs = content.split(/\r?\n/).filter(Boolean).reverse().slice(0, 1000);
             res.send(logs);
         } catch (e) {
+            LOGGER.error('Error reading access log', e);
             res.send([]);
         }
     }
@@ -90,7 +100,7 @@ class NginxService {
     getConfFile(req, res) {
         const httpConf = this.db.getNginxHttpConf().data && this.db.getNginxHttpConf().data.length > 0
             ? this.db.getNginxHttpConf().data
-            : [{ additionnalHttpConf: '' }];
+            : [{additionnalHttpConf: ''}];
         const serversToStart = this.db.getNginx().data.filter((server) => server.enable);
         res.send(this.generateConfFile(httpConf[0], serversToStart));
     }
@@ -98,32 +108,46 @@ class NginxService {
     runNginx(req, res) {
         if (this.nginx) {
             LOGGER.error('Nginx is already running');
-            if (res) res.send({ date: new Date(), log: 'Nginx is already running', status: 'error' });
+            if (res) res.send({date: new Date(), log: 'Nginx is already running', status: 'error'});
             return;
         }
 
-        const confFile = path.join(__dirname, '../../nginx/conf/nginx.tmp.conf');
+        const confFile = NginxPaths.confFilePath;
+        fs.mkdirSync(path.dirname(confFile), {recursive: true});
         const httpConf = this.db.getNginxHttpConf().data && this.db.getNginxHttpConf().data.length > 0
             ? this.db.getNginxHttpConf().data
-            : [{ additionnalHttpConf: '' }];
+            : [{additionnalHttpConf: ''}];
         const serversToStart = this.db.getNginx().data.filter((server) => server.enable);
 
         if (serversToStart.length === 0) {
-            if (res) res.send({ date: new Date(), log: 'No enabled servers — please enable at least one server first.', status: 'error' });
+            if (res) res.send({
+                date: new Date(),
+                log: 'No enabled servers — please enable at least one server first.',
+                status: 'error'
+            });
             return;
         }
 
         try {
             fs.writeFileSync(confFile, this.generateConfFile(httpConf[0], serversToStart));
         } catch (e) {
-            if (res) res.send({ date: new Date(), log: 'Error writing config: ' + e, status: 'error' });
+            if (res) res.send({date: new Date(), log: 'Error writing config: ' + e, status: 'error'});
+            return;
+        }
+
+        if (!this.binaryPath) {
+            if (res) res.send({
+                date: new Date(),
+                log: 'Nginx binary not configured. Use the setup panel to download or locate nginx.',
+                status: 'error'
+            });
             return;
         }
 
         this.nginx = childProcess.spawn(
-            path.join(__dirname, '../../nginx/nginx.exe'),
+            this.binaryPath,
             ['-c', confFile],
-            { cwd: path.join(__dirname, '../../') }
+            {cwd: NginxPaths.nginxCwd}
         );
 
         LOGGER.debug('Running nginx with PID:', this.nginx.pid);
@@ -140,12 +164,12 @@ class NginxService {
         this.nginx.stderr.on('data', (d) => {
             LOGGER.debug('stderr', d.toString());
             this.nginx = null;
-            respond({ date: new Date(), log: 'Error starting server: ' + d.toString(), status: 'error' });
+            respond({date: new Date(), log: 'Error starting server: ' + d.toString(), status: 'error'});
         });
         this.nginx.on('error', (err) => {
             LOGGER.error('nginx spawn error', err.message);
             this.nginx = null;
-            respond({ date: new Date(), log: 'Error starting nginx: ' + err.message, status: 'error' });
+            respond({date: new Date(), log: 'Error starting nginx: ' + err.message, status: 'error'});
         });
 
         setTimeout(() => {
@@ -158,6 +182,9 @@ class NginxService {
     }
 
     generateConfFile(httpConf, serversToStart) {
+        // nginx config parser on Windows interprets \n, \t etc. as escape sequences,
+        // so backslash paths must be converted to forward slashes
+        const nginxPath = (p) => p.replace(/\\/g, '/');
         return `
 events {
     worker_connections  1024;
@@ -165,7 +192,7 @@ events {
 
 
 http {
-    include       mime.types;
+    ${NginxPaths.isWindows ? 'include       mime.types;' : ''}
     default_type  application/octet-stream;
 
     sendfile        on;
@@ -174,10 +201,12 @@ http {
     log_format json_logs '{"remote_addr":"$remote_addr" , "remote_user" : "$remote_user", "time_local" : "$time_local", '
                        '"proxy_host":"$proxy_host", "request": "$request", "status": "$status", "body_bytes_sent": "$body_bytes_sent", '
                        ' "http_referrer" : "$http_referer", "http_user_agent" : "$http_user_agent"}';
+    access_log ${nginxPath(NginxPaths.accessLogPath)} json_logs;
+    error_log  ${nginxPath(NginxPaths.errorLogPath)};
 
 ${httpConf.additionnalHttpConf || '# No additionnal http configuration'}
 
-${serversToStart.map((server) => server.conf).join('\r\n')}
+${serversToStart.map((server) => server.conf).join('\n')}
 }`;
     }
 
@@ -187,14 +216,18 @@ ${serversToStart.map((server) => server.conf).join('\r\n')}
                 this.nginx.on('close', (d) => {
                     LOGGER.debug('closed', 'with result =>', (d || '').toString());
                     this.nginx = null;
-                    res.send({ date: new Date(), log: 'Killed nginx', status: 'success' });
+                    res.send({date: new Date(), log: 'Killed nginx', status: 'success'});
                 });
-                fkill(this.nginx.pid, { tree: true, force: true });
+                if (NginxPaths.isWindows) {
+                    fkill(this.nginx.pid, {tree: true, force: true});
+                } else {
+                    this.nginx.kill('SIGQUIT');
+                }
             } else {
                 res.sendStatus(204);
             }
         } catch (e) {
-            res.send({ date: new Date(), log: "Nginx isn't running", status: 'error' });
+            res.send({date: new Date(), log: "Nginx isn't running", status: 'error'});
         }
     }
 
@@ -203,4 +236,4 @@ ${serversToStart.map((server) => server.conf).join('\r\n')}
     }
 }
 
-module.exports = { NginxService };
+module.exports = {NginxService};

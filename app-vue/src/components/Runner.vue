@@ -2,32 +2,35 @@
   <div class="runner">
     <Card>
       <template #content>
-        <Button
-          v-if="!isRunning"
-          label="Run Nginx"
-          icon="pi pi-play"
-          severity="success"
-          :disabled="isLoading"
-          fluid
-          @click="runNginx"
-        />
-        <Button
-          v-else
-          label="Kill Nginx"
-          icon="pi pi-stop"
-          severity="danger"
-          :disabled="isLoading"
-          fluid
-          @click="killNginx"
-        />
-        <Button
-          label="Show Access Log"
-          icon="pi pi-list"
-          severity="secondary"
-          fluid
-          class="mt-2"
-          @click="showLog"
-        />
+        <NginxSetup v-if="needsSetup" @ready="onBinaryReady" />
+        <template v-else>
+          <Button
+            v-if="!isRunning"
+            label="Run Nginx"
+            icon="pi pi-play"
+            severity="success"
+            :disabled="isLoading"
+            fluid
+            @click="runNginx"
+          />
+          <Button
+            v-else
+            label="Kill Nginx"
+            icon="pi pi-stop"
+            severity="danger"
+            :disabled="isLoading"
+            fluid
+            @click="killNginx"
+          />
+          <Button
+            label="Show Access Log"
+            icon="pi pi-list"
+            severity="secondary"
+            fluid
+            class="mt-2"
+            @click="showLog"
+          />
+        </template>
       </template>
     </Card>
 
@@ -82,7 +85,9 @@ import Dialog from 'primevue/dialog'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
+import NginxSetup from './NginxSetup.vue'
 
+const needsSetup = ref(false)
 const isRunning = ref(false)
 const isLoading = ref(false)
 const logs = ref([])
@@ -110,6 +115,15 @@ async function apiFetch(url, { method = 'GET', body } = {}) {
 }
 
 async function checkIsRunning() {
+  const setup = await apiFetch('/api/nginx/setup')
+  needsSetup.value = !setup.found
+  if (!needsSetup.value) {
+    isRunning.value = await apiFetch('/api/nginx/running')
+  }
+}
+
+async function onBinaryReady() {
+  needsSetup.value = false
   isRunning.value = await apiFetch('/api/nginx/running')
 }
 

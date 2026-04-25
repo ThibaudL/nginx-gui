@@ -3,11 +3,10 @@ export default class EditServerCommon {
         return `server {
     listen          ${server.port};
     server_name     ${server.name};
-    
-    access_log ./logs/json.log json_logs;
+
 ${(server.extraConf || '# No additionnal server configuration')}
-    
-    ${server.locations.filter(location => location.enable).map(this.sampleLocation).join('\r\n')}
+
+    ${server.locations.filter(location => location.enable).map(this.sampleLocation).join('\n')}
 }`;
 
 

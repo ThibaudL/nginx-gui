@@ -9,6 +9,7 @@ const DeployDB = function DeployDB() {
     //Collections
     const nginxCollection = 'nginx';
     const nginxHttpConf = 'nginxHttpConf';
+    const nginxSettings = 'nginxSettings';
 
     const loki = require('lokijs');
     let dbPath = path.join(homedir, 'nginx-gui');
@@ -39,6 +40,7 @@ const DeployDB = function DeployDB() {
             db.loadDatabase({}, () => {
                 createIfNotExist(nginxCollection);
                 createIfNotExist(nginxHttpConf);
+                createIfNotExist(nginxSettings);
                 success(db);
             });
         });
@@ -87,6 +89,26 @@ const DeployDB = function DeployDB() {
         collection.remove(item);
         db.saveDatabase();
     };
+
+    this.getSettings = function () {
+        const col = db.getCollection(nginxSettings);
+        return (col && col.data.length > 0) ? col.data[0] : {};
+    };
+
+    this.saveSetting = function (key, value) {
+        const col = db.getCollection(nginxSettings);
+        const doc = col.data.length > 0 ? col.data[0] : null;
+        if (doc) { doc[key] = value; col.update(doc); }
+        else col.insert({ [key]: value });
+        db.saveDatabase();
+    };
+
+    this.migrateConf = function (transformFn) {
+        const collection = db.getCollection(nginxCollection);
+        collection.data.forEach(item => transformFn(item, collection));
+        db.saveDatabase();
+    };
+
     this.close = function () {
         db.close();
     };
