@@ -74,7 +74,8 @@
               v-tooltip.top="'Extra config'"
               text rounded size="small" severity="warn"
               @click.stop="openAdditionalConf(data)"
-            />
+            >
+            </Button>
             <Button
               icon="pi pi-eye"
               v-tooltip.top="'View conf'"
@@ -209,7 +210,7 @@
       maximizable
       style="width:700px"
     >
-      <pre class="conf-pre">{{ activeServer?.conf }}</pre>
+      <pre class="conf-pre">{{ activeServerConf }}</pre>
     </Dialog>
 
     <!-- Additional conf editor -->
@@ -244,7 +245,6 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import Dialog from 'primevue/dialog'
 import Popover from 'primevue/popover'
 import Tag from 'primevue/tag'
-import EditServerCommon from '../../../app-common/EditServerCommon'
 
 const confirm = useConfirm()
 
@@ -307,17 +307,17 @@ function commitEdit() {
   const { obj, field, server } = editCtx.value
   obj[field] = editValue.value
   editPopover.value.hide()
-  const target = server || obj
-  target.conf = EditServerCommon.sample(target)
   save()
 }
 
 // Per-server conf viewer
 const confDialogOpen = ref(false)
 const activeServer = ref(null)
+const activeServerConf = ref('')
 
-function showServerConf(server) {
+async function showServerConf(server) {
   activeServer.value = server
+  activeServerConf.value = await apiFetch('/api/nginx/servers/' + server.$loki + '/conf')
   confDialogOpen.value = true
 }
 
@@ -345,7 +345,6 @@ function applyAdditionalConf() {
   } else {
     server.extraConf = tmpAdditionalConf.value
   }
-  server.conf = EditServerCommon.sample(server)
   additionalConfOpen.value = false
   additionalConfCtx.value = null
   save()
@@ -395,7 +394,6 @@ async function addLocation(server) {
     enable: false,
     extraConf: ''
   })
-  server.conf = EditServerCommon.sample(server)
   await save()
 }
 
@@ -408,7 +406,6 @@ function removeLocation(server, loc) {
     accept: async () => {
       const idx = server.locations.indexOf(loc)
       if (idx !== -1) server.locations.splice(idx, 1)
-      server.conf = EditServerCommon.sample(server)
       await save()
     }
   })
@@ -416,17 +413,15 @@ function removeLocation(server, loc) {
 
 function onRowReorder(server, event) {
   server.locations = event.value
-  server.conf = EditServerCommon.sample(server)
   save()
 }
 
 async function toggleLocation(server, location) {
   if (location.enable) {
     server.locations
-      .filter((l) => l.location === location.location && l.proxyPass !== location.proxyPass)
-      .forEach((l) => (l.enable = false))
+      .filter((aLocation) => aLocation.location === location.location && aLocation.proxyPass !== location.proxyPass)
+      .forEach((aLocation) => (aLocation.enable = false))
   }
-  server.conf = EditServerCommon.sample(server)
   await save()
 }
 
@@ -517,6 +512,9 @@ onMounted(loadServers)
 /* Disabled rows */
 :deep(.row-disabled) {
   opacity: 0.55;
+}
+.row-disabled .editable-link{
+  color: #43423b;
 }
 
 /* Location expansion pane */

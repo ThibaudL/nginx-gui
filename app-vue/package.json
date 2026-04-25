@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@primevue/themes": "^4.0.0",
+    "d3": "^7.9.0",
     "primeicons": "^7.0.0",
     "primevue": "^4.0.0",
     "vue": "^3.5.0"

@@ -37,6 +37,14 @@
     <nav class="sidebar-nav">
       <button
         class="nav-item"
+        :class="{ active: activeView === 'topology' }"
+        @click="$emit('navigate', 'topology')"
+      >
+        <i class="pi pi-sitemap" />
+        <span>Topology</span>
+      </button>
+      <button
+        class="nav-item"
         :class="{ active: activeView === 'servers' }"
         @click="$emit('navigate', 'servers')"
       >
@@ -82,8 +90,12 @@
     maximizable
     style="width:90vw"
   >
-    <div class="mb-2">
-      <InputText v-model="filter" placeholder="Filter…" fluid />
+    <div class="mb-2 log-filter-row">
+      <InputText v-model="filter" placeholder="Filter…" style="flex:1" />
+      <span class="live-badge" :class="{ connected: liveConnected }">
+        <span class="live-dot" />
+        {{ liveConnected ? 'Live' : 'Connecting…' }}
+      </span>
     </div>
     <DataTable
       :value="filteredLogs"
@@ -94,17 +106,18 @@
     >
       <Column field="remote_addr" header="Remote ADDR" />
       <Column field="time_local" header="Time" />
+      <Column field="server_name" header="Server" />
+      <Column field="correlation_id" header="Correlation ID" />
       <Column field="request" header="Request" />
       <Column field="status" header="Status" style="width:5rem" />
       <Column field="body_bytes_sent" header="Bytes" style="width:6rem" />
       <Column field="proxy_host" header="Proxy host" />
-      <Column field="http_user_agent" header="User agent" />
     </DataTable>
   </Dialog>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
@@ -125,6 +138,29 @@ const isLoading = ref(false)
 const accessLogs = ref([])
 const logDialogOpen = ref(false)
 const filter = ref('')
+const liveConnected = ref(false)
+
+let eventSource = null
+
+watch(logDialogOpen, (open) => {
+  if (open) {
+    eventSource = new EventSource('/api/nginx/logs/access/stream')
+    eventSource.onopen = () => { liveConnected.value = true }
+    eventSource.onmessage = (e) => {
+      try {
+        const entry = { ...JSON.parse(e.data), id: Date.now() + Math.random() }
+        accessLogs.value.unshift(entry)
+        if (accessLogs.value.length > 1000) accessLogs.value.length = 1000
+      } catch {}
+    }
+    eventSource.onerror = () => { liveConnected.value = false }
+  } else {
+    if (eventSource) { eventSource.close(); eventSource = null }
+    liveConnected.value = false
+  }
+})
+
+onUnmounted(() => { if (eventSource) eventSource.close() })
 
 const filteredLogs = computed(() => {
   if (!filter.value) return accessLogs.value
@@ -337,4 +373,36 @@ checkIsRunning()
 .access-logs-toggle:hover { color: #94a3b8; }
 
 .mb-2 { margin-bottom: 0.5rem; }
+
+.log-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.live-badge.connected { color: #16a34a; }
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #9ca3af;
+  flex-shrink: 0;
+}
+
+.live-badge.connected .live-dot {
+  background: #22c55e;
+  animation: pulse 1.8s infinite;
+}
 </style>

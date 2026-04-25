@@ -9,3 +9,7 @@ nginx/conf/nginx.conf
 nginx/conf/nginx.tmp.conf
 nginx/nginx.exe
 .npmrc
+/CLAUDE.md
+/.claude/settings.local.json
+/public/index.html
+/public/assets/**

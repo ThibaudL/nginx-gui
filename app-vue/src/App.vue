@@ -17,6 +17,8 @@
         />
       </div>
 
+      <Topology v-else-if="activeView === 'topology'" />
+
       <div v-else-if="activeView === 'view-config'" class="config-view">
         <div class="view-header">
           <h2>nginx.conf</h2>
@@ -39,6 +41,7 @@ import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
 import Runner from './components/Runner.vue'
 import Servers from './components/Servers.vue'
+import Topology from './components/Topology.vue'
 
 const activeView = ref('servers')
 

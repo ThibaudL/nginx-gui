@@ -6,6 +6,7 @@ const fkill = require('fkill');
 const NginxPaths = require('./NginxPaths');
 const {rotateNginxLog} = require('./NginxLogRotation');
 const {pidFilePath} = require("./NginxPaths");
+const NginxConfGenerator = require('./NginxConfGenerator');
 
 function readNginxPid() {
     try {
@@ -35,11 +36,21 @@ class NginxService {
         this.rotationTimer = setInterval(() => rotateNginxLog(this.nginx, this.binaryPath), 60 * 60 * 1000);
         LOGGER.info(`NginxPaths : `,NginxPaths)
 
+        this.sseClients = new Set();
+        try {
+            this.logFileOffset = fs.existsSync(NginxPaths.accessLogPath)
+                ? fs.statSync(NginxPaths.accessLogPath).size
+                : 0;
+        } catch { this.logFileOffset = 0; }
+        this.logPollTimer = setInterval(() => this._pollAccessLog(), 1000);
+
+        app.route('/api/nginx/logs/access/stream').get(this.streamAccessLog.bind(this));
         app.route('/api/nginx/logs/access').get(this.getAccessLog.bind(this));
         app.route('/api/nginx/conf').get(this.getConfFile.bind(this));
         app.route('/api/nginx/servers')
             .get(this.getServers.bind(this))
             .post(this.postServers.bind(this));
+        app.route('/api/nginx/servers/:id/conf').get(this.getServerConf.bind(this));
         app.route('/api/nginx/servers/:id')
             .get(this.getServer.bind(this))
             .post(this.postServer.bind(this))
@@ -72,9 +83,42 @@ class NginxService {
         }
     }
 
+    streamAccessLog(req, res) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders();
+        res.write(':ok\n\n');
+        this.sseClients.add(res);
+        req.on('close', () => this.sseClients.delete(res));
+    }
+
+    _pollAccessLog() {
+        if (this.sseClients.size === 0) return;
+        const logPath = NginxPaths.accessLogPath;
+        if (!fs.existsSync(logPath)) return;
+        try {
+            const stat = fs.statSync(logPath);
+            if (stat.size < this.logFileOffset) this.logFileOffset = 0; // log rotated
+            if (stat.size === this.logFileOffset) return;
+            const fd = fs.openSync(logPath, 'r');
+            const buf = Buffer.alloc(stat.size - this.logFileOffset);
+            fs.readSync(fd, buf, 0, buf.length, this.logFileOffset);
+            fs.closeSync(fd);
+            this.logFileOffset = stat.size;
+            buf.toString().split(/\r?\n/).filter(Boolean).forEach(line => {
+                const payload = `data: ${line}\n\n`;
+                this.sseClients.forEach(r => r.write(payload));
+            });
+        } catch (e) {
+            LOGGER.error('SSE poll error', e);
+        }
+    }
+
     postServers(req, res) {
         (req.body || []).forEach((server) => {
-            this.db.save(this.db.getNginx(), server);
+            const { conf, ...data } = server;
+            this.db.save(this.db.getNginx(), data);
         });
         res.send(this.db.getNginx().data);
     }
@@ -117,32 +161,40 @@ class NginxService {
         );
     }
 
+    getServerConf(req, res) {
+        const server = this.db.getNginx().data.find(
+            (s) => s.$loki === Number.parseInt(req.params.id, 10)
+        );
+        if (!server) return res.sendStatus(404);
+        res.send(NginxConfGenerator.generateServer(server));
+    }
+
     getConfFile(req, res) {
+        const confContent = this.getConfContent();
+        res.send(confContent);
+    }
+
+    getConfContent() {
         const httpConf = this.db.getNginxHttpConf().data && this.db.getNginxHttpConf().data.length > 0
             ? this.db.getNginxHttpConf().data
             : [{additionnalHttpConf: ''}];
         const serversToStart = this.db.getNginx().data.filter((server) => server.enable);
-        res.send(this.generateConfFile(httpConf[0], serversToStart));
+        const confContent = this.generateConfFile(httpConf[0], serversToStart);
+        return confContent;
     }
 
     runNginx(req, res) {
-        if (this.nginx) {
-            LOGGER.error('Nginx is already running');
-            if (res) res.send({date: new Date(), log: 'Nginx is already running', status: 'error'});
-            return;
-        }
         const existingPid = readNginxPid();
-        if (existingPid !== null && isProcessRunning(existingPid)) {
-            LOGGER.error('Nginx is already running (pid %d)', existingPid);
+        if (isProcessRunning(existingPid)) {
+            LOGGER.error('Nginx is already running');
             if (res) res.send({date: new Date(), log: 'Nginx is already running', status: 'error'});
             return;
         }
 
         const confFile = NginxPaths.confFilePath;
         fs.mkdirSync(path.dirname(confFile), {recursive: true});
-        const httpConf = this.db.getNginxHttpConf().data && this.db.getNginxHttpConf().data.length > 0
-            ? this.db.getNginxHttpConf().data
-            : [{additionnalHttpConf: ''}];
+        const confContent = this.getConfContent();
+        
         const serversToStart = this.db.getNginx().data.filter((server) => server.enable);
 
         if (serversToStart.length === 0) {
@@ -155,7 +207,7 @@ class NginxService {
         }
 
         try {
-            fs.writeFileSync(confFile, this.generateConfFile(httpConf[0], serversToStart));
+            fs.writeFileSync(confFile, confContent);
         } catch (e) {
             if (res) res.send({date: new Date(), log: 'Error writing config: ' + e, status: 'error'});
             return;
@@ -224,15 +276,21 @@ http {
     sendfile        on;
 
     keepalive_timeout  65;
-    log_format json_logs '{"remote_addr":"$remote_addr" , "remote_user" : "$remote_user", "time_local" : "$time_local", '
-                       '"proxy_host":"$proxy_host", "request": "$request", "status": "$status", "body_bytes_sent": "$body_bytes_sent", '
-                       ' "http_referrer" : "$http_referer", "http_user_agent" : "$http_user_agent"}';
+
+    map $http_x_correlation_id $correlation_id {
+        default $http_x_correlation_id;
+        ""      $request_id;
+    }
+
+    log_format json_logs '{"remote_addr":"$remote_addr", "correlation_id":"$correlation_id", "remote_user":"$remote_user", "time_local":"$time_local", '
+                       '"server_name":"$sent_http_x_server_name", "proxy_host":"$proxy_host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", '
+                       '"http_referrer":"$http_referer", "http_user_agent":"$http_user_agent"}';
     access_log ${nginxPath(NginxPaths.accessLogPath)} json_logs;
     error_log  ${nginxPath(NginxPaths.errorLogPath)};
 
-${httpConf.additionnalHttpConf || '# No additionnal http configuration'}
+    ${httpConf.additionnalHttpConf || '# No additionnal http configuration'}
 
-${serversToStart.map((server) => server.conf).join('\n')}
+${serversToStart.map((server) => NginxConfGenerator.generateServer(server)).join('\n')}
 }`;
     }
 
