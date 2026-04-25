@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "node server/main.js",
-    "server:dev": "node server/main.js --watch",
+    "server:dev": "node --watch server/main.js",
     "build": "npm run build --prefix app-vue"
   },
   "dependencies": {

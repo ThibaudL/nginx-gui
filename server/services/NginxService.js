@@ -5,6 +5,26 @@ const childProcess = require('child_process');
 const fkill = require('fkill');
 const NginxPaths = require('./NginxPaths');
 const {rotateNginxLog} = require('./NginxLogRotation');
+const {pidFilePath} = require("./NginxPaths");
+
+function readNginxPid() {
+    try {
+        const pid = parseInt(fs.readFileSync(NginxPaths.pidFilePath, 'utf8').trim(), 10);
+        return isNaN(pid) ? null : pid;
+    } catch {
+        return null;
+    }
+}
+
+function isProcessRunning(pid) {
+    try {
+        //0 doesn't actually kill the process
+        process.kill(pid, 0);
+        return true;
+    } catch (e){
+        return false;
+    }
+}
 
 class NginxService {
 
@@ -111,6 +131,12 @@ class NginxService {
             if (res) res.send({date: new Date(), log: 'Nginx is already running', status: 'error'});
             return;
         }
+        const existingPid = readNginxPid();
+        if (existingPid !== null && isProcessRunning(existingPid)) {
+            LOGGER.error('Nginx is already running (pid %d)', existingPid);
+            if (res) res.send({date: new Date(), log: 'Nginx is already running', status: 'error'});
+            return;
+        }
 
         const confFile = NginxPaths.confFilePath;
         fs.mkdirSync(path.dirname(confFile), {recursive: true});
@@ -147,7 +173,7 @@ class NginxService {
         this.nginx = childProcess.spawn(
             this.binaryPath,
             ['-c', confFile],
-            {cwd: NginxPaths.nginxCwd}
+            {cwd: NginxPaths.nginxCwd, detached: true}
         );
 
         LOGGER.debug('Running nginx with PID:', this.nginx.pid);
@@ -211,28 +237,20 @@ ${serversToStart.map((server) => server.conf).join('\n')}
     }
 
     killNginx(req, res) {
+        const pid = readNginxPid();
         try {
-            if (this.nginx) {
-                this.nginx.on('close', (d) => {
-                    LOGGER.debug('closed', 'with result =>', (d || '').toString());
-                    this.nginx = null;
+            fkill(pid, {tree: true, force: true})
+                .then(() => {
                     res.send({date: new Date(), log: 'Killed nginx', status: 'success'});
                 });
-                if (NginxPaths.isWindows) {
-                    fkill(this.nginx.pid, {tree: true, force: true});
-                } else {
-                    this.nginx.kill('SIGQUIT');
-                }
-            } else {
-                res.sendStatus(204);
-            }
         } catch (e) {
+            LOGGER.error(`error killing nginx : ${pid}`, e)
             res.send({date: new Date(), log: "Nginx isn't running", status: 'error'});
         }
     }
 
     isRunning(req, res) {
-        res.json(this.nginx !== null);
+        res.json(isProcessRunning(readNginxPid()));
     }
 }
 

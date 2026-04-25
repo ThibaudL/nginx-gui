@@ -17,4 +17,7 @@ module.exports = {
         ? path.join(nginxDir, 'conf', 'nginx.conf')
         : path.join(nginxGuiHome, 'nginx.conf'),
     nginxCwd:      isWindows ? nginxDir : undefined,
+    pidFilePath:   isWindows
+        ? path.join(nginxDir, 'logs', 'nginx.pid')
+        : path.join(nginxGuiHome, 'nginx.pid'),
 };
