@@ -96,6 +96,7 @@
   >
     <div class="mb-2 log-filter-row">
       <InputText v-model="filter" placeholder="Filter…" style="flex:1" />
+      <Button icon="pi pi-trash" severity="secondary" text @click="clearLogs" v-tooltip="'Clear logs'" />
       <span class="live-badge" :class="{ connected: liveConnected }">
         <span class="live-dot" />
         {{ liveConnected ? 'Live' : 'Connecting…' }}
@@ -239,6 +240,10 @@ async function killNginx() {
     await checkIsRunning()
     isLoading.value = false
   }
+}
+
+function clearLogs() {
+  accessLogs.value = []
 }
 
 async function showLog() {
