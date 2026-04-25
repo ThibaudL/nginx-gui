@@ -2,8 +2,9 @@
 
 ## Requirements
 
-- Node 14+ (runtime)
-- Windows only
+- Node 14+ (backend runtime)
+- Windows or Linux
+- nginx — downloaded automatically on Windows; install via package manager on Linux
 
 ## Usage
 
@@ -26,6 +27,36 @@ Or start nginx automatically on launch:
 ```
 nginx-gui --start-nginx
 ```
+
+### First run
+
+On first launch, if no nginx binary is found the UI shows a setup panel:
+
+- **Windows** — pick a version from the list (fetched live from nginx.org) and click **Download & Install**. The binary is extracted to `~/.nginx-gui/nginx/`.
+- **Linux** — install nginx via your package manager, then restart nginx-gui:
+  ```
+  sudo apt install nginx   # Debian/Ubuntu
+  sudo yum install nginx   # RHEL/CentOS
+  ```
+
+### Runtime files
+
+All data lives under `~/.nginx-gui/` and is never written to the project directory:
+
+```
+~/.nginx-gui/
+  data.json          # server configuration database
+  nginx/             # downloaded nginx (Windows)
+    nginx.exe
+    conf/nginx.conf  # generated on each run
+  nginx.conf         # generated on each run (Linux)
+  logs/
+    access.log       # nginx access log (JSON lines)
+    nginx-error.log  # nginx error log
+    access.YYYY-MM-DD.log  # rotated logs (7 days retained)
+```
+
+Access logs are rotated automatically — daily or when the file exceeds 10 MB.
 
 ## Development
 
