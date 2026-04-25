@@ -1,458 +1,609 @@
 <template>
-  <div>
-    <div class="q-pa-md" style="width: 100%">
-      <q-btn color="positive" @click="servers.push({locations : []});save()">
-        <q-btn rounded outline icon="playlist_add"></q-btn>
-        &nbsp;&nbsp;Add new server
-      </q-btn>
-      &nbsp;
-      <q-btn color="primary" @click="showModalConfFile()">
-        <q-btn rounded outline icon="visibility"></q-btn>
-        &nbsp;&nbsp;Visualize configuration file
-      </q-btn>
-      &nbsp;
-      <q-btn color="accent" @click="openModalAdditionnalHttpConf()">
-        <q-btn rounded outline icon="edit"></q-btn>
-        &nbsp;&nbsp;Edit Http additionnal configuration
-      </q-btn>
+  <div class="servers">
 
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <IconField>
+        <InputIcon class="pi pi-search" />
+        <InputText v-model="search" placeholder="Search servers..." />
+      </IconField>
+      <Button label="Add Server" icon="pi pi-plus" severity="success" @click="addServer" />
     </div>
-    <div class="q-pa-md" style="width: 100%">
-      <q-table
-        :data="servers"
-        :columns="columns"
-        :pagination="pagination"
-        :rows-per-page-options="[0]"
-        row-key="$loki"
-      >
-        <template slot="body" slot-scope="props">
-          <q-tr class="server" :props="props">
-            <q-td>
-              <q-btn dense round :icon="props.expand ? 'arrow_drop_up' : 'arrow_drop_down'"
-                     @click="props.expand = !props.expand">
-                <q-tooltip>
-                  Show {{ props.expand , locations
-                </q-tooltip>
-              </q-btn>
-            </q-td>
-            <q-td class="text-left" key="displayName" :props="props">
-              <a>{{ props.row.displayName || 'SET VALUE' }}</a>
-              <q-popup-edit v-model="props.row.displayName" buttons>
-                <q-input v-model="props.row.displayName" @change="save" dense autofocus counter/>
-              </q-popup-edit>
-            </q-td>
-            <q-td class="text-left" key="name" :props="props">
-              <a>{{ props.row.name || 'SET VALUE' }}</a>
-              <q-popup-edit v-model="props.row.name" buttons>
-                <q-input v-model="props.row.name" @change="save" dense autofocus counter/>
-              </q-popup-edit>
-            </q-td>
-            <q-td key="port" :props="props">
-              <a>{{ props.row.port || 'SET VALUE' }}</a>
-              <q-popup-edit v-model="props.row.port" buttons>
-                <q-input v-model="props.row.port" @change="save" dense autofocus counter/>
-              </q-popup-edit>
-            </q-td>
-            <q-td key="enable" class="text-center">
-              <q-toggle dense v-model="props.row.enable" @input="toggleServer(props.row)"/>
-            </q-td>
-            <q-td key="additionnalConf" class="text-center">
-              <q-btn outline round color="accent" icon="edit" @click="showModalAdditionnalConf(props.row)"/>
-            </q-td>
-            <q-td key="showConf" class="text-center">
-              <q-btn outline round color="primary" icon="visibility" @click="showModalConf(props.row)"/>
-            </q-td>
-            <q-td>
-              <q-btn outline round color="negative" icon="delete_sweep"
-                     @click="removeServer(props.key, props.row)">
-                <q-tooltip>Remove Server</q-tooltip>
-              </q-btn>
-            </q-td>
-          </q-tr>
-          <q-tr class="location" v-if="props.expand" :props="props">
-            <q-td class="text-center">Order</q-td>
-            <q-th colspan="2" class="text-left">Location</q-th>
-            <q-th colspan="2">Proxy pass</q-th>
-            <q-th>
-              Enabled
-            </q-th>
-            <q-th>
-              Additionnal Configuration
-            </q-th>
-            <q-th>
-              <q-btn outline round color="positive" icon="playlist_add"
-                     @click="props.row.locations.push({location : 'FILL LOCATION',proxyPass:'FILL PROXY-PASS',enable : false});editServer(props.row)">
-                <q-tooltip>Add new Location</q-tooltip>
-              </q-btn>
-            </q-th>
-          </q-tr>
-          <q-tr class="location" v-if="props.expand" :props="props"
-                v-for="(aLocation,idLocation) in props.row.locations"
-                :key="aLocation.$loki">
-            <q-td class="text-center">
-              <q-btn-group dense flat rounded>
 
-                <q-btn rounded icon="arrow_drop_up" v-if="idLocation>0"
-                       @click="move(props.row,aLocation,-1)">
-                </q-btn>
-                <q-btn rounded icon="arrow_drop_down" v-if="idLocation<props.row.locations.length-1"
-                       @click="move(props.row,aLocation,1)">
-                </q-btn>
-              </q-btn-group>
-            </q-td>
-            <q-td colspan="2">
-              <div class="text-left">
-                <a>{{ aLocation.location }}</a>
-                <q-popup-edit v-model="aLocation.location" buttons persistent>
-                  <q-input v-model="aLocation.location" @change="editServer(props.row)" dense autofocus counter/>
-                </q-popup-edit>
-              </div>
-            </q-td>
-            <q-td colspan="2">
-              <div class="text-left">
-                <a>{{ aLocation.proxyPass }}</a>
-                <q-popup-edit v-model="aLocation.proxyPass">
-                  <q-input v-model="aLocation.proxyPass" @change="editServer(props.row)" dense autofocus counter/>
-                </q-popup-edit>
-              </div>
-            </q-td>
-            <q-td>
-              <q-toggle dense v-model="aLocation.enable" @input="toggleLocation(props.row,aLocation)"/>
-            </q-td>
-            <q-td>
-              <q-btn outline round color="accent" icon="edit" @click="showModalAdditionnalConf(props.row,aLocation)"/>
-            </q-td>
-            <q-td>
-              <q-btn outline round color="negative" icon="delete_sweep"
-                     @click="removeLocation(props,idLocation, aLocation)">
-                <q-tooltip>Remove Location</q-tooltip>
-              </q-btn>
-            </q-td>
-          </q-tr>
+    <!-- Servers table -->
+    <DataTable
+      :value="filteredServers"
+      v-model:expandedRows="expandedRows"
+      dataKey="$loki"
+      :row-class="serverRowClass"
+      style="width:100%"
+    >
+      <!-- Expander -->
+      <Column expander style="width:3rem" />
+
+      <!-- Display Name + location count badge -->
+      <Column header="Display Name">
+        <template #body="{ data }">
+          <span class="editable-link" @click.stop="openEdit($event, data, 'displayName')">
+            {{ data.displayName || 'SET VALUE' }}
+          </span>
+          <Tag
+            v-if="data.locations?.length"
+            :value="`${data.locations.length} loc`"
+            severity="success"
+            class="loc-badge"
+          />
         </template>
-      </q-table>
-    </div>
-    <q-dialog @hide="cleanModalContext()" v-model="showConf" v-if="activeServer || confFile">
-      <q-card>
-        <q-card-section>
-          <div class="text-h6">{{ (activeServer && activeServer.displayName) || 'Configuration File' }}</div>
-        </q-card-section>
-        <q-card-section>
-              <pre>
-  {{ (activeServer && activeServer.conf) || confFile }}
-              </pre>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
-    <q-dialog v-model="showAdditionnalConf" @hide="cancelAdditionnalConf()" >
-      <q-card v-if="showAdditionnalConf" class="additionnal-conf">
-        <q-card-section>
-          <div class="text-h6">Additionnal Configuration</div>
-        </q-card-section>
-        <q-card-section>
-          <q-input v-model="tmpAdditionnalConf"
-                   @change="save"
-                   type="textarea"
-                   dense autofocus counter filled/>
-        </q-card-section>
-        <!--        <q-separator inset />-->
-        <q-card-actions align="right">
-          <q-btn @click="cancelAdditionnalConf()">Cancel</q-btn>
-          <q-btn class="bg-primary text-white" @click="applyAdditionnalConf()">Apply</q-btn>
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-    <q-dialog v-model="showAdditionnalHttpConf" @hide="cancelAdditionnalHttpConf()">
-      <q-card v-if="showAdditionnalHttpConf" class="additionnal-conf">
-        <q-card-section>
-          <div class="text-h6">Additionnal Http Configuration</div>
-        </q-card-section>
-        <q-card-section>
-          <q-input v-model="tmpAdditionnalHttpConf"
-                   type="textarea"
-                   dense autofocus counter filled/>
-        </q-card-section>
-        <!--        <q-separator inset />-->
-        <q-card-actions align="right">
-          <q-btn @click="cancelAdditionnalHttpConf()">Cancel</q-btn>
-          <q-btn class="bg-primary text-white" @click="applyAdditionnalHttpConf()">Apply</q-btn>
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      </Column>
+
+      <!-- Server Names (monospace, truncated) -->
+      <Column header="Server Names">
+        <template #body="{ data }">
+          <code
+            class="server-name"
+            :title="data.name"
+            @click.stop="openEdit($event, data, 'name')"
+          >{{ data.name || 'SET VALUE' }}</code>
+        </template>
+      </Column>
+
+      <!-- Port -->
+      <Column header="Port" style="width:6rem;text-align:right">
+        <template #body="{ data }">
+          <span
+            class="port-val"
+            :class="{ 'port-enabled': data.enable }"
+            @click.stop="openEdit($event, data, 'port')"
+          >{{ data.port || '—' }}</span>
+        </template>
+      </Column>
+
+      <!-- Enabled -->
+      <Column header="Enabled" style="width:7rem;text-align:center">
+        <template #body="{ data }">
+          <ToggleSwitch v-model="data.enable" @change="toggleServer(data)" />
+        </template>
+      </Column>
+
+      <!-- Actions (hover-reveal) -->
+      <Column header="Actions" style="width:8rem">
+        <template #body="{ data }">
+          <div class="actions-cell">
+            <Button
+              icon="pi pi-pencil"
+              v-tooltip.top="'Extra config'"
+              text rounded size="small" severity="warn"
+              @click.stop="openAdditionalConf(data)"
+            >
+            </Button>
+            <Button
+              icon="pi pi-eye"
+              v-tooltip.top="'View conf'"
+              text rounded size="small"
+              @click.stop="showServerConf(data)"
+            />
+            <Button
+              icon="pi pi-trash"
+              v-tooltip.top="'Delete'"
+              text rounded size="small" severity="danger"
+              @click.stop="removeServer(data)"
+            />
+          </div>
+        </template>
+      </Column>
+
+      <!-- Locations expansion -->
+      <template #expansion="{ data: server }">
+        <div class="location-pane">
+          <DataTable
+            :value="server.locations"
+            dataKey="_id"
+            size="small"
+            :reorderable-rows="true"
+            :row-class="locationRowClass"
+            style="width:100%"
+            @row-reorder="onRowReorder(server, $event)"
+          >
+            <template #header>
+              <div class="loc-header">
+                <span class="loc-header-title">
+                  <i class="pi pi-map-marker" style="font-size:0.75rem" />
+                  LOCATIONS
+                </span>
+                <Button
+                  label="+ Add location"
+                  size="small"
+                  outlined
+                  severity="success"
+                  @click="addLocation(server)"
+                />
+              </div>
+            </template>
+
+            <template #empty>
+              <div class="empty-locations">No locations yet — add one above</div>
+            </template>
+
+            <!-- Drag handle -->
+            <Column row-reorder style="width:2.5rem" />
+
+            <!-- Order # -->
+            <Column header="#" style="width:3.5rem">
+              <template #body="{ index }">
+                <span class="loc-num">#{{ index + 1 }}</span>
+              </template>
+            </Column>
+
+            <!-- Path (monospace) -->
+            <Column header="Path">
+              <template #body="{ data: loc }">
+                <code
+                  class="loc-path"
+                  @click.stop="openEdit($event, loc, 'location', server)"
+                >{{ loc.location }}</code>
+                <Tag v-if="isSsl(loc)" value="SSL" severity="success" class="ssl-badge" />
+              </template>
+            </Column>
+
+            <!-- Proxy Pass -->
+            <Column header="Proxy Pass">
+              <template #body="{ data: loc }">
+                <span
+                  class="proxy-pass"
+                  @click.stop="openEdit($event, loc, 'proxyPass', server)"
+                >{{ loc.proxyPass || '—' }}</span>
+              </template>
+            </Column>
+
+            <!-- Port (derived from proxyPass) -->
+            <Column header="Port" style="width:5rem">
+              <template #body="{ data: loc }">
+                <span class="loc-port">{{ getLocPort(loc) }}</span>
+              </template>
+            </Column>
+
+            <!-- Enabled -->
+            <Column header="Enabled" style="width:6rem;text-align:center">
+              <template #body="{ data: loc }">
+                <ToggleSwitch v-model="loc.enable" @change="toggleLocation(server, loc)" />
+              </template>
+            </Column>
+
+            <!-- Delete (hover-reveal) -->
+            <Column style="width:3rem">
+              <template #body="{ data: loc }">
+                <div class="actions-cell">
+                  <Button
+                    icon="pi pi-trash"
+                    text rounded size="small" severity="danger"
+                    @click.stop="removeLocation(server, loc)"
+                  />
+                </div>
+              </template>
+            </Column>
+          </DataTable>
+        </div>
+      </template>
+    </DataTable>
+
+    <!-- Inline edit Popover -->
+    <Popover ref="editPopover">
+      <div class="edit-popover-content">
+        <InputText
+          v-model="editValue"
+          autofocus
+          style="width:260px"
+          @keydown.enter="commitEdit"
+        />
+        <div class="edit-popover-actions">
+          <Button label="Save" size="small" @click="commitEdit" />
+          <Button label="Cancel" size="small" severity="secondary" @click="editPopover.hide()" />
+        </div>
+      </div>
+    </Popover>
+
+    <!-- Per-server conf viewer -->
+    <Dialog
+      v-model:visible="confDialogOpen"
+      :header="activeServer?.displayName || 'Configuration'"
+      modal
+      maximizable
+      style="width:700px"
+    >
+      <pre class="conf-pre">{{ activeServerConf }}</pre>
+    </Dialog>
+
+    <!-- Additional conf editor -->
+    <Dialog
+      v-model:visible="additionalConfOpen"
+      header="Additional Configuration"
+      modal
+      style="width:520px"
+      @hide="cancelAdditionalConf"
+    >
+      <Textarea v-model="tmpAdditionalConf" rows="12" style="width:100%" />
+      <template #footer>
+        <Button label="Cancel" severity="secondary" @click="cancelAdditionalConf" />
+        <Button label="Apply" @click="applyAdditionalConf" />
+      </template>
+    </Dialog>
+
   </div>
 </template>
 
-<style>
-.additionnal-conf {
-  width: 40%;
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useConfirm } from 'primevue/useconfirm'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import Textarea from 'primevue/textarea'
+import ToggleSwitch from 'primevue/toggleswitch'
+import Dialog from 'primevue/dialog'
+import Popover from 'primevue/popover'
+import Tag from 'primevue/tag'
+
+const confirm = useConfirm()
+
+async function apiFetch(url, { method = 'GET', body } = {}) {
+  const opts = { method, headers: {} }
+  if (body !== undefined) {
+    opts.headers['Content-Type'] = 'application/json'
+    opts.body = JSON.stringify(body)
+  }
+  const r = await fetch(url, opts)
+  if (r.status === 204) return null
+  const ct = r.headers.get('content-type') || ''
+  return ct.includes('json') ? r.json() : r.text()
 }
 
-/*.additionnal-conf q-card-actions>button {*/
-/*  margin: 20px;*/
-/*  margin: 20px;*/
-/*}*/
+const servers = ref([])
+const expandedRows = ref({})
+const search = ref('')
 
-a {
-  color: var(--q-color-primary);
-  font-weight: 500;
-  text-decoration: none;
-  outline: 0;
-  border-bottom: 1px solid currentColor;
-  vertical-align: center;
-  transition: opacity .2s;
-  white-space: nowrap;
-  cursor: pointer;
-}
+const filteredServers = computed(() => {
+  if (!search.value) return servers.value
+  const q = search.value.toLowerCase()
+  return servers.value.filter(
+    (s) =>
+      (s.displayName || '').toLowerCase().includes(q) ||
+      (s.name || '').toLowerCase().includes(q)
+  )
+})
 
-tr.location {
-  background-color: #2671a617;
-}
+const serverRowClass = (data) => (data.enable ? '' : 'row-disabled')
+const locationRowClass = (data) => (data.enable ? '' : 'row-disabled')
 
-</style>
-
-
-<script>
-
-import axios from 'axios';
-import EditServerCommon from '../../../app-common/EditServerCommon';
-
-Array.prototype.move = function (from, to) {
-  this.splice(to, 0, this.splice(from, 1)[0]);
-};
-
-export default {
-  name: 'Servers',
-  data: () => {
-    return {
-      servers: [],
-      httpConf: {},
-      activeServer: null,
-      activeLocation: null,
-      logs: [],
-      columns: [
-        {},
-        {name: 'displayName', align: 'left', label: 'Display name', field: 'displayName'},
-        {name: 'name', align: 'left', label: 'Name', field: 'name'},
-        {name: 'port', label: 'Port', field: 'port'},
-        {name: 'enable', align: 'center', label: 'Enabled', field: 'enable'},
-        {name: 'additionnalConf', align: 'center', label: 'Additionnal Configuration'},
-        {name: 'showConf', align: 'center', label: 'Conf'},
-        {}
-      ],
-      showConf: false,
-      confFile: null,
-      showAdditionnalConf: false,
-      showAdditionnalHttpConf: false,
-      tmpAdditionnalConf: '',
-      tmpAdditionnalHttpConf: '',
-      pagination: {'rowsPerPage': 0}
-    }
-  },
-  methods: {
-    removeServer(key, server) {
-      if (key) {
-        this.$q.dialog({
-          title: 'Confirm',
-          message: 'Are you sure you want to delete the server "' + server.displayName + '"',
-          ok: {
-            push: true,
-            label: 'Yes'
-          },
-          cancel: {
-            push: true,
-            color: 'negative',
-            label: 'No'
-          },
-          persistent: true
-        }).onOk(() => {
-          axios.delete('/api/nginx/servers/' + key)
-            .then((res) => this.getServers());
-        })
-      }
-    },
-    removeLocation(props, idLocation, aLocation) {
-      this.$q.dialog({
-        title: 'Confirm',
-        message: 'Are you sure you want to delete the location "' + aLocation.location + '" with proxy pass "' + aLocation.proxyPass + '"',
-        ok: {
-          push: true,
-          label: 'Yes'
-        },
-        cancel: {
-          push: true,
-          color: 'negative',
-          label: 'No'
-        },
-        persistent: true
-      }).onOk(() => {
-        props.row.locations.splice(idLocation, 1);
-        this.editServer(props.row);
-      })
-    },
-    move(server, location, ecart) {
-      const from = server.locations.findIndex((l) => l.location === location.location && l.proxyPass === location.proxyPass);
-      const to = from + ecart;
-      server.locations.move(from, to);
-      this.editServer(server);
-    },
-    editServer(server, $event) {
-      server.conf = EditServerCommon.sample(server)
-      this.save()
-        .then(() => {
-          this.restartIfRunnedServerHasBeenModified(server);
-        });
-    },
-    cleanModalContext() {
-      this.activeServer = null;
-      this.confFile = null;
-    },
-    showModalConf(server) {
-      this.activeServer = server;
-      this.showConf = true;
-    },
-    showModalConfFile() {
-      this.getConfFile().then(confFile => {
-        this.confFile = confFile;
-        this.showConf = true;
-      });
-    },
-    showModalAdditionnalConf(server, location) {
-      this.activeServer = server;
-      if (location) {
-        this.activeLocation = location;
-        this.tmpAdditionnalConf = this.activeLocation.extraConf;
-      } else {
-        this.tmpAdditionnalConf = this.activeServer.extraConf;
-      }
-      this.showAdditionnalConf = true;
-    },
-    cancelAdditionnalConf() {
-      this.showAdditionnalConf = false;
-      this.activeServer = null;
-      this.activeLocation = null;
-      this.tmpAdditionnalConf = '';
-    },
-    openModalAdditionnalHttpConf(){
-      this.showAdditionnalHttpConf = true;
-      this.tmpAdditionnalHttpConf = this.httpConf.additionnalHttpConf;
-    },
-    cancelAdditionnalHttpConf() {
-      this.showAdditionnalHttpConf = false;
-      this.tmpAdditionnalHttpConf = '';
-    },
-    applyAdditionnalHttpConf() {
-      this.showAdditionnalHttpConf = false;
-      this.httpConf.additionnalHttpConf = this.tmpAdditionnalHttpConf;
-      axios.post('/api/nginx/http', this.httpConf);
-    },
-    applyAdditionnalConf() {
-      this.showAdditionnalConf = false;
-      let foundServer = this.servers
-        .find((s) => s.port === this.activeServer.port && s.$loki === this.activeServer.$loki);
-      if (this.activeLocation) {
-        foundServer.locations.find((aLocation) => aLocation.location === this.activeLocation.location && aLocation.proxyPass === this.activeLocation.proxyPass)
-          .extraConf = this.tmpAdditionnalConf;
-      } else {
-        foundServer.extraConf = this.tmpAdditionnalConf;
-      }
-      foundServer.conf = EditServerCommon.sample(foundServer);
-      this.save();
-      this.activeServer = null;
-    },
-    restartIfRunnedServerHasBeenModified(server) {
-      // DISABLING BECAUSE IT'S UNSTABLE
-      // if (server.enable) {
-      //   this.isRunning().then((isRunning) => {
-      //     if (isRunning) {
-      //       this.restartNginx();
-      //     }
-      //   })
-      // }
-    },
-    toggleServer(server) {
-      console.log(server.enable);
-      if (server.enable) {
-        let serversToDisable = this.servers
-          .filter((s) => s.port === server.port && s.$loki !== server.$loki);
-        console.log(this.servers.map((s) => ({loki: s.$loki, enable: s.enable})));
-        serversToDisable
-          .forEach((s) => s.enable = false);
-        console.log(this.servers.map((s) => ({loki: s.$loki, enable: s.enable})));
-      }
-      this.save();
-    },
-    toggleLocation(server, location) {
-      if (location.enable) {
-        server.locations
-          .filter((l) => l.location === location.location && l.proxyPass !== location.proxyPass)
-          .forEach((l) => l.enable = false);
-      }
-      server.conf = EditServerCommon.sample(server);
-      this.save();
-    },
-    isRunning() {
-      return axios.get(`/api/nginx/running`).then((res) => res.data);
-    },
-    runNginx() {
-      if (!this.servers.some((server) => server.enable)) {
-        this.logs.push({
-          date: new Date(),
-          log: 'Nothing to start, please enable at least one server'
-        });
-      } else {
-        axios.post(`/api/nginx/run`)
-          .then((res) => {
-            this.logs.push(res.data);
-          })
-          .catch((res) => {
-            this.logs.push(res.data);
-          })
-          .finally(() => {
-
-          });
-      }
-    },
-    killNginx() {
-      return axios.post(`/api/nginx/kill`)
-        .then((res) => {
-          this.logs.push(res.data);
-        })
-        .catch((res) => {
-          this.logs.push(res.data);
-        })
-        .finally(() => {
-
-        });
-    },
-    restartNginx() {
-      this.killNginx().then(() => this.runNginx());
-    },
-    save() {
-      return axios.post('/api/nginx/servers', this.servers)
-        .then((res) => {
-          this.servers = res.data;
-          return this.servers[this.servers.length - 1];
-        });
-    },
-    getServers() {
-      axios.get('/api/nginx/servers')
-        .then((res) => res.data)
-        .then((servers) => this.servers = servers);
-    },
-    getHttpConf() {
-      axios.get('/api/nginx/http')
-        .then((res) => res.data)
-        .then((httpConf) => this.httpConf = httpConf && httpConf.length > 0 ? httpConf[0] : {});
-    }
-    ,
-    getConfFile() {
-      return axios.get('/api/nginx/conf')
-        .then((res) => res.data);
-    }
-  },
-  mounted() {
-    this.getServers();
-    this.getHttpConf();
+function getLocPort(loc) {
+  if (!loc.proxyPass) return '—'
+  try {
+    const url = new URL(loc.proxyPass)
+    if (url.port) return url.port
+    return url.protocol === 'https:' ? '443' : '80'
+  } catch {
+    return '—'
   }
 }
+
+function isSsl(loc) {
+  return getLocPort(loc) === '443' || (loc.proxyPass || '').startsWith('https://')
+}
+
+// Inline edit popover
+const editPopover = ref(null)
+const editCtx = ref(null)
+const editValue = ref('')
+
+function openEdit(event, obj, field, server = null) {
+  editCtx.value = { obj, field, server }
+  editValue.value = String(obj[field] ?? '')
+  editPopover.value.show(event)
+}
+
+function commitEdit() {
+  const { obj, field, server } = editCtx.value
+  obj[field] = editValue.value
+  editPopover.value.hide()
+  save()
+}
+
+// Per-server conf viewer
+const confDialogOpen = ref(false)
+const activeServer = ref(null)
+const activeServerConf = ref('')
+
+async function showServerConf(server) {
+  activeServer.value = server
+  activeServerConf.value = await apiFetch('/api/nginx/servers/' + server.$loki + '/conf')
+  confDialogOpen.value = true
+}
+
+// Additional conf dialog
+const additionalConfOpen = ref(false)
+const additionalConfCtx = ref(null)
+const tmpAdditionalConf = ref('')
+
+function openAdditionalConf(server, location = null) {
+  additionalConfCtx.value = { server, location }
+  tmpAdditionalConf.value = location ? (location.extraConf || '') : (server.extraConf || '')
+  additionalConfOpen.value = true
+}
+
+function cancelAdditionalConf() {
+  additionalConfOpen.value = false
+  additionalConfCtx.value = null
+  tmpAdditionalConf.value = ''
+}
+
+function applyAdditionalConf() {
+  const { server, location } = additionalConfCtx.value
+  if (location) {
+    location.extraConf = tmpAdditionalConf.value
+  } else {
+    server.extraConf = tmpAdditionalConf.value
+  }
+  additionalConfOpen.value = false
+  additionalConfCtx.value = null
+  save()
+}
+
+// Server CRUD
+function addServer() {
+  servers.value.push({
+    displayName: 'New Server',
+    name: 'example.com',
+    port: '80',
+    enable: false,
+    extraConf: '',
+    locations: []
+  })
+  save()
+}
+
+function removeServer(server) {
+  if (!server.$loki) return
+  confirm.require({
+    message: `Delete server "${server.displayName || server.name}"?`,
+    header: 'Confirm',
+    acceptLabel: 'Yes',
+    rejectLabel: 'No',
+    accept: () => {
+      apiFetch('/api/nginx/servers/' + server.$loki, { method: 'DELETE' }).then(loadServers)
+    }
+  })
+}
+
+function toggleServer(server) {
+  if (server.enable) {
+    servers.value
+      .filter((s) => s.port === server.port && s.$loki !== server.$loki)
+      .forEach((s) => (s.enable = false))
+  }
+  save()
+}
+
+// Location CRUD
+async function addLocation(server) {
+  server.locations.push({
+    _id: Date.now() + Math.random(),
+    location: '/path',
+    proxyPass: 'http://target',
+    enable: false,
+    extraConf: ''
+  })
+  await save()
+}
+
+function removeLocation(server, loc) {
+  confirm.require({
+    message: `Delete location "${loc.location}"?`,
+    header: 'Confirm',
+    acceptLabel: 'Yes',
+    rejectLabel: 'No',
+    accept: async () => {
+      const idx = server.locations.indexOf(loc)
+      if (idx !== -1) server.locations.splice(idx, 1)
+      await save()
+    }
+  })
+}
+
+function onRowReorder(server, event) {
+  server.locations = event.value
+  save()
+}
+
+async function toggleLocation(server, location) {
+  if (location.enable) {
+    server.locations
+      .filter((aLocation) => aLocation.location === location.location && aLocation.proxyPass !== location.proxyPass)
+      .forEach((aLocation) => (aLocation.enable = false))
+  }
+  await save()
+}
+
+// API
+async function save() {
+  servers.value = await apiFetch('/api/nginx/servers', { method: 'POST', body: servers.value })
+}
+
+async function loadServers() {
+  const data = await apiFetch('/api/nginx/servers')
+  data.forEach((s) =>
+    s.locations.forEach((l) => { if (!l._id) l._id = Date.now() + Math.random() })
+  )
+  servers.value = data
+}
+
+onMounted(loadServers)
 </script>
+
+<style scoped>
+.servers {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* Server names */
+.server-name {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #374151;
+  cursor: pointer;
+  display: block;
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.server-name:hover { color: var(--p-primary-color, #6366f1); }
+
+.editable-link {
+  color: var(--p-primary-color, #6366f1);
+  font-weight: 500;
+  cursor: pointer;
+}
+.editable-link:hover { text-decoration: underline; }
+
+.loc-badge {
+  font-size: 0.68rem;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.port-val {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  font-family: monospace;
+}
+.port-val.port-enabled { color: #16a34a; }
+
+/* Hover-reveal actions */
+.actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+:deep(.p-datatable-tbody > tr:hover) .actions-cell {
+  opacity: 1;
+}
+
+/* Disabled rows */
+:deep(.row-disabled) {
+  opacity: 0.55;
+}
+.row-disabled .editable-link{
+  color: #43423b;
+}
+
+/* Location expansion pane */
+.location-pane {
+  background: #f9fafb;
+  border-top: 2px solid #e5e7eb;
+}
+
+.loc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.loc-header-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-transform: uppercase;
+}
+
+.loc-num {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  font-family: monospace;
+}
+
+.loc-path {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #111827;
+  font-weight: 600;
+  cursor: pointer;
+}
+.loc-path:hover { color: var(--p-primary-color, #6366f1); }
+
+.ssl-badge {
+  font-size: 0.63rem;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+}
+
+.proxy-pass {
+  font-size: 0.83rem;
+  color: #374151;
+  cursor: pointer;
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.proxy-pass:hover { color: var(--p-primary-color, #6366f1); }
+
+.loc-port {
+  font-size: 0.82rem;
+  color: #374151;
+  font-family: monospace;
+}
+
+.empty-locations {
+  text-align: center;
+  color: #9ca3af;
+  padding: 1.5rem;
+  font-size: 0.88rem;
+}
+
+/* Edit popover */
+.edit-popover-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.25rem;
+}
+.edit-popover-actions { display: flex; gap: 0.5rem; }
+
+/* Conf pre */
+.conf-pre {
+  font-family: monospace;
+  font-size: 0.82rem;
+  white-space: pre;
+  overflow: auto;
+  max-height: 70vh;
+  background: #f3f4f6;
+  padding: 0.75rem;
+  border-radius: 4px;
+}
+</style>

@@ -1,35 +1,31 @@
 const winston = require('winston');
 const path = require('path');
+const fs = require('fs');
 
-winston.emitErrs = true;
+const logsDir = path.join(__dirname, '../logs');
+if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+}
 
-var logger = new winston.Logger({
+const logger = winston.createLogger({
+    level: 'debug',
+    exitOnError: false,
     transports: [
         new winston.transports.File({
-            level: 'debug',
-            filename: path.join(__dirname, '../logs/logs.log'),
+            filename: path.join(logsDir, 'logs.log'),
             handleExceptions: true,
-            json: true,
-            maxsize: 5242880, //5MB
+            maxsize: 5242880,
             maxFiles: 5,
-            colorize: false
+            format: winston.format.json()
         }),
         new winston.transports.Console({
-            level: 'debug',
             handleExceptions: true,
-            json: false,
-            colorize: true
+            format: winston.format.combine(
+                winston.format.colorize(),
+                winston.format.simple()
+            )
         })
-    ],
-    exitOnError: false
+    ]
 });
 
 module.exports = logger;
-module.exports.stream = {
-    info: function (message, encoding) {
-        logger.info(message);
-    },
-    debug: function (message, encoding) {
-        logger.debug(message);
-    }
-};

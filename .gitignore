@@ -7,4 +7,7 @@ server/db/data.json
 public/dist/**
 nginx/conf/nginx.conf
 nginx/conf/nginx.tmp.conf
+nginx/nginx.exe
 .npmrc
+/CLAUDE.md
+/.claude/settings.local.json
