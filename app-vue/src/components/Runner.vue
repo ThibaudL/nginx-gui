@@ -87,16 +87,43 @@
 
     <div class="sidebar-spacer" />
 
-    <!-- Access Logs button -->
-    <div class="access-logs-section">
-      <button class="access-logs-toggle" @click="showLog">
-        <i class="pi pi-chevron-right" style="font-size:0.65rem" />
+    <!-- Log buttons -->
+    <div class="logs-section">
+      <button class="logs-toggle" @click="showLog">
+        <i class="pi pi-list" style="font-size:0.65rem" />
         <span>Access Logs</span>
+        <i class="pi pi-chevron-right" style="font-size:0.65rem;opacity:0.5" />
+      </button>
+      <button class="logs-toggle" @click="showErrorLog">
+        <i class="pi pi-exclamation-triangle" style="font-size:0.65rem" />
+        <span>Error Logs</span>
         <i class="pi pi-chevron-right" style="font-size:0.65rem;opacity:0.5" />
       </button>
     </div>
 
   </aside>
+
+  <!-- Error Logs Dialog -->
+  <Dialog
+    v-model:visible="errorLogDialogOpen"
+    header="Error Logs"
+    modal
+    maximizable
+    style="width:90vw"
+  >
+    <div class="mb-2 log-filter-row">
+      <InputText v-model="errorFilter" placeholder="Filter…" style="flex:1" />
+      <Button icon="pi pi-trash" severity="secondary" text @click="clearErrorLogs" v-tooltip="'Clear logs'" />
+      <span class="live-badge" :class="{ connected: errorLiveConnected }">
+        <span class="live-dot" />
+        {{ errorLiveConnected ? 'Live' : 'Connecting…' }}
+      </span>
+    </div>
+    <div class="error-log-list">
+      <div v-for="line in filteredErrorLogs" :key="line.id" class="error-log-line">{{ line.text }}</div>
+      <div v-if="filteredErrorLogs.length === 0" class="error-log-empty">No error log entries.</div>
+    </div>
+  </Dialog>
 
   <!-- Access Logs Dialog -->
   <Dialog
@@ -160,7 +187,13 @@ const logDialogOpen = ref(false)
 const filter = ref('')
 const liveConnected = ref(false)
 
+const errorLogs = ref([])
+const errorLogDialogOpen = ref(false)
+const errorFilter = ref('')
+const errorLiveConnected = ref(false)
+
 let eventSource = null
+let errorEventSource = null
 
 watch(logDialogOpen, (open) => {
   if (open) {
@@ -180,7 +213,25 @@ watch(logDialogOpen, (open) => {
   }
 })
 
-onUnmounted(() => { if (eventSource) eventSource.close() })
+watch(errorLogDialogOpen, (open) => {
+  if (open) {
+    errorEventSource = new EventSource('/api/nginx/logs/error/stream')
+    errorEventSource.onopen = () => { errorLiveConnected.value = true }
+    errorEventSource.onmessage = (e) => {
+      errorLogs.value.unshift({ text: e.data, id: Date.now() + Math.random() })
+      if (errorLogs.value.length > 1000) errorLogs.value.length = 1000
+    }
+    errorEventSource.onerror = () => { errorLiveConnected.value = false }
+  } else {
+    if (errorEventSource) { errorEventSource.close(); errorEventSource = null }
+    errorLiveConnected.value = false
+  }
+})
+
+onUnmounted(() => {
+  if (eventSource) eventSource.close()
+  if (errorEventSource) errorEventSource.close()
+})
 
 const filteredLogs = computed(() => {
   if (!filter.value) return accessLogs.value
@@ -188,6 +239,12 @@ const filteredLogs = computed(() => {
   return accessLogs.value.filter((row) =>
     Object.values(row).some((v) => String(v).toLowerCase().includes(q))
   )
+})
+
+const filteredErrorLogs = computed(() => {
+  if (!errorFilter.value) return errorLogs.value
+  const q = errorFilter.value.toLowerCase()
+  return errorLogs.value.filter((row) => row.text.toLowerCase().includes(q))
 })
 
 async function apiFetch(url, { method = 'GET', body } = {}) {
@@ -273,6 +330,17 @@ async function testConfig() {
 
 function clearLogs() {
   accessLogs.value = []
+}
+
+function clearErrorLogs() {
+  errorLogs.value = []
+}
+
+async function showErrorLog() {
+  const data = await apiFetch('/api/nginx/logs/error')
+  let id = 0
+  errorLogs.value = data.map((raw) => ({ text: raw, id: id++ }))
+  errorLogDialogOpen.value = true
 }
 
 async function showLog() {
@@ -415,17 +483,17 @@ loadSettings()
 
 .sidebar-spacer { flex: 1; min-height: 0.5rem; }
 
-.access-logs-section {
+.logs-section {
   border-top: 1px solid rgba(255,255,255,0.07);
   flex-shrink: 0;
 }
 
-.access-logs-toggle {
+.logs-toggle {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   width: 100%;
-  padding: 0.6rem 1rem;
+  padding: 0.55rem 1rem;
   background: none;
   border: none;
   color: #64748b;
@@ -433,7 +501,34 @@ loadSettings()
   font-size: 0.8rem;
   transition: color 0.15s;
 }
-.access-logs-toggle:hover { color: #94a3b8; }
+.logs-toggle:hover { color: #94a3b8; }
+.logs-toggle + .logs-toggle { border-top: 1px solid rgba(255,255,255,0.04); }
+
+.error-log-list {
+  height: 60vh;
+  overflow-y: auto;
+  background: #0f1117;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+}
+
+.error-log-line {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.78rem;
+  color: #e2e8f0;
+  padding: 2px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.error-log-line:hover { background: rgba(255,255,255,0.05); }
+
+.error-log-empty {
+  font-size: 0.82rem;
+  color: #64748b;
+  padding: 1rem;
+  text-align: center;
+}
 
 .mb-2 { margin-bottom: 0.5rem; }
 

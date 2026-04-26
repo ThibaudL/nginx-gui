@@ -44,9 +44,19 @@ class NginxService {
         } catch { this.logFileOffset = 0; }
         this.logPollTimer = setInterval(() => this._pollAccessLog(), 1000);
 
+        this.errorSseClients = new Set();
+        try {
+            this.errorLogOffset = fs.existsSync(NginxPaths.errorLogPath)
+                ? fs.statSync(NginxPaths.errorLogPath).size
+                : 0;
+        } catch { this.errorLogOffset = 0; }
+        this.errorPollTimer = setInterval(() => this._pollErrorLog(), 1000);
+
         app.route('/api/nginx/logs/access/stream').get(this.streamAccessLog.bind(this));
         app.route('/api/nginx/logs/access/path').get((req, res) => res.json({ path: NginxPaths.accessLogPath }));
         app.route('/api/nginx/logs/access').get(this.getAccessLog.bind(this));
+        app.route('/api/nginx/logs/error/stream').get(this.streamErrorLog.bind(this));
+        app.route('/api/nginx/logs/error').get(this.getErrorLog.bind(this));
         app.route('/api/nginx/conf').get(this.getConfFile.bind(this));
         app.route('/api/nginx/servers')
             .get(this.getServers.bind(this))
@@ -94,6 +104,15 @@ class NginxService {
         res.setHeader('Connection', 'keep-alive');
         res.flushHeaders();
         res.write(':ok\n\n');
+        // Sync offset to current EOF so SSE only delivers lines that arrive
+        // after this connection — avoids duplicating lines already sent by
+        // the initial REST fetch in showLog().
+        if (this.sseClients.size === 0) {
+            try {
+                if (fs.existsSync(NginxPaths.accessLogPath))
+                    this.logFileOffset = fs.statSync(NginxPaths.accessLogPath).size;
+            } catch { /* ignore */ }
+        }
         this.sseClients.add(res);
         req.on('close', () => this.sseClients.delete(res));
     }
@@ -117,6 +136,56 @@ class NginxService {
             });
         } catch (e) {
             LOGGER.error('SSE poll error', e);
+        }
+    }
+
+    getErrorLog(req, res) {
+        try {
+            const content = fs.existsSync(NginxPaths.errorLogPath)
+                ? fs.readFileSync(NginxPaths.errorLogPath).toString()
+                : '';
+            res.send(content.split(/\r?\n/).filter(Boolean).reverse().slice(0, 1000));
+        } catch (e) {
+            LOGGER.error('Error reading error log', e);
+            res.send([]);
+        }
+    }
+
+    streamErrorLog(req, res) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders();
+        res.write(':ok\n\n');
+        if (this.errorSseClients.size === 0) {
+            try {
+                if (fs.existsSync(NginxPaths.errorLogPath))
+                    this.errorLogOffset = fs.statSync(NginxPaths.errorLogPath).size;
+            } catch { /* ignore */ }
+        }
+        this.errorSseClients.add(res);
+        req.on('close', () => this.errorSseClients.delete(res));
+    }
+
+    _pollErrorLog() {
+        if (this.errorSseClients.size === 0) return;
+        const logPath = NginxPaths.errorLogPath;
+        if (!fs.existsSync(logPath)) return;
+        try {
+            const stat = fs.statSync(logPath);
+            if (stat.size < this.errorLogOffset) this.errorLogOffset = 0;
+            if (stat.size === this.errorLogOffset) return;
+            const fd = fs.openSync(logPath, 'r');
+            const buf = Buffer.alloc(stat.size - this.errorLogOffset);
+            fs.readSync(fd, buf, 0, buf.length, this.errorLogOffset);
+            fs.closeSync(fd);
+            this.errorLogOffset = stat.size;
+            buf.toString().split(/\r?\n/).filter(Boolean).forEach(line => {
+                const payload = `data: ${line}\n\n`;
+                this.errorSseClients.forEach(r => r.write(payload));
+            });
+        } catch (e) {
+            LOGGER.error('Error log SSE poll error', e);
         }
     }
 
