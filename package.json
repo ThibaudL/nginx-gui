@@ -15,6 +15,7 @@
     "start": "node server/main.js",
     "server:dev": "node --watch server/main.js",
     "build": "npm run build --prefix app-vue",
+    "preversion": "npm run build",
     "version": "node scripts/sync-version.js && git add app-vue/package.json",
     "postversion": "git push && git push --tags",
     "release:patch": "npm version patch",
