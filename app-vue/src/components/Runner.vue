@@ -29,6 +29,18 @@
           @click="isRunning ? killNginx() : runNginx()"
         />
       </div>
+      <div class="sidebar-btn-wrap sidebar-btn-wrap--secondary">
+        <Button
+          label="Test config"
+          severity="secondary"
+          :disabled="isLoading || isValidating"
+          :loading="isValidating"
+          icon="pi pi-check-circle"
+          text
+          fluid
+          @click="testConfig()"
+        />
+      </div>
       <div class="sidebar-autostart">
         <ToggleSwitch v-model="autoStartOnStartup" inputId="autoStartToggle" @change="saveAutoStart" />
         <label for="autoStartToggle">Auto-start on launch</label>
@@ -141,6 +153,7 @@ const toast = useToast()
 const needsSetup = ref(false)
 const isRunning = ref(false)
 const isLoading = ref(false)
+const isValidating = ref(false)
 const autoStartOnStartup = ref(false)
 const accessLogs = ref([])
 const logDialogOpen = ref(false)
@@ -239,6 +252,22 @@ async function killNginx() {
   } finally {
     await checkIsRunning()
     isLoading.value = false
+  }
+}
+
+async function testConfig() {
+  isValidating.value = true
+  try {
+    const data = await apiFetch('/api/nginx/validate', { method: 'POST' })
+    if (data?.valid) {
+      toast.add({ severity: 'success', summary: 'Config OK', detail: data.output || 'nginx -t passed', life: 4000 })
+    } else {
+      toast.add({ severity: 'error', summary: 'Config invalid', detail: data?.error || 'Validation failed', life: 8000 })
+    }
+  } catch {
+    toast.add({ severity: 'error', summary: 'Config test', detail: 'Request failed', life: 4000 })
+  } finally {
+    isValidating.value = false
   }
 }
 
@@ -341,6 +370,7 @@ loadSettings()
 .status-text { font-size: 0.85rem; font-weight: 500; }
 
 .sidebar-btn-wrap { padding: 0.4rem 1rem 0.25rem; }
+.sidebar-btn-wrap--secondary { padding-top: 0; }
 
 .sidebar-autostart {
   display: flex;

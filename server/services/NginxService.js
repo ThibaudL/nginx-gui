@@ -59,6 +59,7 @@ class NginxService {
         app.route('/api/nginx/http')
             .get(this.getHttpConf.bind(this))
             .post(this.postHttpConf.bind(this));
+        app.route('/api/nginx/validate').post(this.validateConf.bind(this));
         app.route('/api/nginx/run').post(this.runNginx.bind(this));
         app.route('/api/nginx/running').get(this.isRunning.bind(this));
         app.route('/api/nginx/kill').post(this.killNginx.bind(this));
@@ -226,6 +227,18 @@ class NginxService {
             return;
         }
 
+        const validation = childProcess.spawnSync(
+            this.binaryPath,
+            ['-t', '-c', confFile],
+            {cwd: NginxPaths.nginxCwd}
+        );
+        if (validation.status !== 0) {
+            const errOutput = (validation.stderr || validation.stdout || '').toString().trim();
+            LOGGER.error('nginx -t failed', errOutput);
+            if (res) res.send({date: new Date(), log: 'Config validation failed: ' + errOutput, status: 'error'});
+            return;
+        }
+
         this.nginx = childProcess.spawn(
             this.binaryPath,
             ['-c', confFile],
@@ -296,6 +309,31 @@ http {
 
 ${serversToStart.map((server) => NginxConfGenerator.generateServer(server)).join('\n')}
 }`;
+    }
+
+    validateConf(req, res) {
+        if (!this.binaryPath) {
+            return res.json({valid: false, error: 'Nginx binary not configured.'});
+        }
+        const confFile = NginxPaths.confFilePath;
+        fs.mkdirSync(path.dirname(confFile), {recursive: true});
+        const confContent = this.getConfContent();
+        try {
+            fs.writeFileSync(confFile, confContent);
+        } catch (e) {
+            return res.json({valid: false, error: 'Error writing config: ' + e.message});
+        }
+        const result = childProcess.spawnSync(
+            this.binaryPath,
+            ['-t', '-c', confFile],
+            {cwd: NginxPaths.nginxCwd}
+        );
+        const output = (result.stderr || result.stdout || '').toString().trim();
+        if (result.status === 0) {
+            res.json({valid: true, output});
+        } else {
+            res.json({valid: false, error: output});
+        }
     }
 
     killNginx(req, res) {
