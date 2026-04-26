@@ -1,31 +1,31 @@
-const winston = require('winston');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 
 const logsDir = path.join(__dirname, '../logs');
 if (!fs.existsSync(logsDir)) {
     fs.mkdirSync(logsDir, { recursive: true });
 }
 
-const logger = winston.createLogger({
-    level: 'debug',
-    exitOnError: false,
-    transports: [
-        new winston.transports.File({
-            filename: path.join(logsDir, 'logs.log'),
-            handleExceptions: true,
-            maxsize: 5242880,
-            maxFiles: 5,
-            format: winston.format.json()
-        }),
-        new winston.transports.Console({
-            handleExceptions: true,
-            format: winston.format.combine(
-                winston.format.colorize(),
-                winston.format.simple()
-            )
-        })
-    ]
-});
+const logStream = fs.createWriteStream(path.join(logsDir, 'logs.log'), { flags: 'a' });
 
-module.exports = logger;
+const COLORS = {
+    error: '\x1b[31m',
+    warn:  '\x1b[33m',
+    info:  '\x1b[32m',
+    debug: '\x1b[36m',
+};
+const RESET = '\x1b[0m';
+
+function log(level, ...args) {
+    const message = args.map(a => (a && typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+    logStream.write(JSON.stringify({ level, message, timestamp: new Date().toISOString() }) + '\n');
+    const color = COLORS[level] || '';
+    console.log(`${color}${level}${RESET}: ${message}`);
+}
+
+module.exports = {
+    error: (...args) => log('error', ...args),
+    warn:  (...args) => log('warn',  ...args),
+    info:  (...args) => log('info',  ...args),
+    debug: (...args) => log('debug', ...args),
+};
