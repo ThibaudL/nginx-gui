@@ -20,7 +20,7 @@
     "build": "npm run build --prefix app-vue",
     "preversion": "npm run build",
     "version": "node scripts/sync-version.js && git add app-vue/package.json",
-    "postversion": "git push && git push --tags",
+    "postversion": "git push && git push --tags && npm publish",
     "release:patch": "npm version patch",
     "release:minor": "npm version minor",
     "release:major": "npm version major"
