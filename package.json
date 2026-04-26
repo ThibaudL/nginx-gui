@@ -9,7 +9,7 @@
   "author": "Thibaud Lamarche (thibaud.lamarche@gmail.com)",
   "homepage": "https://github.com/ThibaudL/nginx-gui",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.com/"
   },
   "bin": {
     "nginx-gui": "./server/main.js"
