@@ -14,7 +14,12 @@
   "scripts": {
     "start": "node server/main.js",
     "server:dev": "node --watch server/main.js",
-    "build": "npm run build --prefix app-vue"
+    "build": "npm run build --prefix app-vue",
+    "version": "node scripts/sync-version.js && git add app-vue/package.json",
+    "postversion": "git push && git push --tags",
+    "release:patch": "npm version patch",
+    "release:minor": "npm version minor",
+    "release:major": "npm version major"
   },
   "dependencies": {
     "adm-zip": "^0.5.17",
