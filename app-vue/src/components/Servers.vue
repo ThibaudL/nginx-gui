@@ -83,6 +83,12 @@
               @click.stop="showServerConf(data)"
             />
             <Button
+              icon="pi pi-copy"
+              v-tooltip.top="'Duplicate'"
+              text rounded size="small" severity="secondary"
+              @click.stop="duplicateServer(data)"
+            />
+            <Button
               icon="pi pi-trash"
               v-tooltip.top="'Delete'"
               text rounded size="small" severity="danger"
@@ -169,10 +175,22 @@
               </template>
             </Column>
 
-            <!-- Delete (hover-reveal) -->
-            <Column style="width:3rem">
+            <!-- Actions (hover-reveal) -->
+            <Column style="width:6rem">
               <template #body="{ data: loc }">
                 <div class="actions-cell">
+                  <Button
+                    icon="pi pi-pencil"
+                    v-tooltip.top="'Extra config'"
+                    text rounded size="small" severity="warn"
+                    @click.stop="openAdditionalConf(server, loc)"
+                  />
+                  <Button
+                    icon="pi pi-copy"
+                    v-tooltip.top="'Duplicate'"
+                    text rounded size="small" severity="secondary"
+                    @click.stop="duplicateLocation(server, loc)"
+                  />
                   <Button
                     icon="pi pi-trash"
                     text rounded size="small" severity="danger"
@@ -365,6 +383,17 @@ function addServer() {
   save()
 }
 
+function duplicateServer(server) {
+  const copy = JSON.parse(JSON.stringify(server))
+  delete copy.$loki
+  delete copy.meta
+  copy.displayName = (copy.displayName || copy.name) + ' (copy)'
+  copy.enable = false
+  copy.locations = copy.locations.map((loc) => ({ ...loc, _id: Date.now() + Math.random() }))
+  servers.value.push(copy)
+  save()
+}
+
 function removeServer(server) {
   if (!server.$loki) return
   confirm.require({
@@ -399,6 +428,13 @@ async function addLocation(server) {
   await save()
 }
 
+async function duplicateLocation(server, loc) {
+  const copy = { ...loc, _id: Date.now() + Math.random(), enable: false }
+  const idx = server.locations.indexOf(loc)
+  server.locations.splice(idx + 1, 0, copy)
+  await save()
+}
+
 function removeLocation(server, loc) {
   confirm.require({
     message: `Delete location "${loc.location}"?`,
@@ -420,8 +456,9 @@ function onRowReorder(server, event) {
 
 async function toggleLocation(server, location) {
   if (location.enable) {
+    console.log("enabling",server.locations)
     server.locations
-      .filter((aLocation) => aLocation.location === location.location && aLocation.proxyPass !== location.proxyPass)
+      .filter((aLocation) => aLocation.location === location.location && aLocation._id !== location._id)
       .forEach((aLocation) => (aLocation.enable = false))
   }
   await save()
