@@ -71,6 +71,7 @@ class NginxService {
             .post(this.postHttpConf.bind(this));
         app.route('/api/nginx/validate').post(this.validateConf.bind(this));
         app.route('/api/nginx/run').post(this.runNginx.bind(this));
+        app.route('/api/nginx/restart').post(this.restartNginx.bind(this));
         app.route('/api/nginx/running').get(this.isRunning.bind(this));
         app.route('/api/nginx/kill').post(this.killNginx.bind(this));
         app.route('/api/nginx/settings')
@@ -403,6 +404,18 @@ ${serversToStart.map((server) => NginxConfGenerator.generateServer(server)).join
         } else {
             res.json({valid: false, error: output});
         }
+    }
+
+    async restartNginx(req, res) {
+        const pid = readNginxPid();
+        if (isProcessRunning(pid)) {
+            try {
+                await fkill(pid, {tree: true, force: true});
+            } catch (e) {
+                LOGGER.error(`error killing nginx during restart : ${pid}`, e);
+            }
+        }
+        this.runNginx(req, res);
     }
 
     killNginx(req, res) {

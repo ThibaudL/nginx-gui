@@ -19,7 +19,7 @@
         <span class="status-dot" :class="{ running: isRunning }" />
         <span class="status-text">{{ isRunning ? 'Running' : 'Stopped' }}</span>
       </div>
-      <div class="sidebar-btn-wrap">
+      <div class="sidebar-btn-wrap sidebar-btn-row">
         <Button
           :label="isRunning ? 'Stop Nginx' : 'Start Nginx'"
           :severity="isRunning ? 'danger' : 'success'"
@@ -27,6 +27,16 @@
           outlined
           fluid
           @click="isRunning ? killNginx() : runNginx()"
+        />
+        <Button
+          v-if="isRunning"
+          icon="pi pi-refresh"
+          severity="warning"
+          :disabled="isLoading"
+          outlined
+          fluid
+          v-tooltip.right="'Restart'"
+          @click="restartNginx()"
         />
       </div>
       <div class="sidebar-btn-wrap sidebar-btn-wrap--secondary">
@@ -320,6 +330,22 @@ async function killNginx() {
   }
 }
 
+async function restartNginx() {
+  isLoading.value = true
+  toast.add({ severity: 'info', summary: 'Nginx', detail: 'Restarting…', life: 3000 })
+  try {
+    const data = await apiFetch('/api/nginx/restart', { method: 'POST' })
+    const detail = data?.log || 'Restarted'
+    const isError = data?.status === 'error'
+    toast.add({ severity: isError ? 'error' : 'success', summary: 'Nginx', detail, life: 4000 })
+  } catch {
+    toast.add({ severity: 'error', summary: 'Nginx', detail: 'Request failed', life: 4000 })
+  } finally {
+    await checkIsRunning()
+    isLoading.value = false
+  }
+}
+
 async function testConfig() {
   isValidating.value = true
   try {
@@ -447,6 +473,7 @@ loadSettings()
 
 .sidebar-btn-wrap { padding: 0.4rem 1rem 0.25rem; }
 .sidebar-btn-wrap--secondary { padding-top: 0; }
+.sidebar-btn-row { display: flex; align-items: center; gap: 0.25rem; }
 
 .sidebar-autostart {
   display: flex;
