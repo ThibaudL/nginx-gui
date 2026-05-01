@@ -55,6 +55,11 @@ The **Servers** view shows all configured virtual servers in an expandable table
 - Enable/disable individual servers — only one server per port can be active at a time
 - Expand a server row to manage its **locations** (path + proxy_pass), reorder them by drag-and-drop, and toggle each independently
 - Per-server and per-location **extra config** fields accept raw nginx directives appended to the generated block
+- **Properties** dialog (sliders icon) exposes structured controls for the most common directives — no raw config needed:
+  - *Server:* max upload size (`client_max_body_size`), gzip compression + MIME types, access log toggle, SSL/TLS (certificate, key, protocols)
+  - *Location:* WebSocket support (auto-injects `proxy_http_version` + Upgrade headers), proxy timeouts (read/connect/send), proxy buffering, CORS, rate limiting (`limit_req`), HTTP basic auth
+- **Extract to Properties** button inside the extra config editor parses raw nginx directives and migrates any recognized ones into the structured Properties fields, removing them from the freeform text
+- Active properties are shown as inline badges on each row (GZIP, SSL, WS, CORS, RL, AUTH, NO LOG)
 - **View Conf** shows the generated `server { }` block for any server before committing
 
 ### HTTP config
