@@ -31,8 +31,11 @@
             v-if="data.locations?.length"
             :value="`${data.locations.length} loc`"
             severity="success"
-            class="loc-badge"
+            class="row-badge"
           />
+          <Tag v-if="data.props?.gzip" value="GZIP" severity="info" class="row-badge" />
+          <Tag v-if="data.props?.ssl" value="SSL" severity="contrast" class="row-badge" />
+          <Tag v-if="data.props?.accessLog === false" value="NO LOG" severity="warn" class="row-badge" />
         </template>
       </Column>
 
@@ -66,9 +69,15 @@
       </Column>
 
       <!-- Actions (hover-reveal) -->
-      <Column header="Actions" style="width:8rem">
+      <Column header="Actions" style="width:10rem">
         <template #body="{ data }">
           <div class="actions-cell">
+            <Button
+              icon="pi pi-sliders-h"
+              v-tooltip.top="'Properties'"
+              text rounded size="small" severity="secondary"
+              @click.stop="openProps(data)"
+            />
             <Button
               icon="pi pi-pencil"
               v-tooltip.top="'Extra config'"
@@ -147,7 +156,11 @@
                   class="loc-path"
                   @click.stop="openEdit($event, loc, 'location', server)"
                 >{{ loc.location }}</code>
-                <Tag v-if="isSsl(loc)" value="SSL" severity="success" class="ssl-badge" />
+                <Tag v-if="isSsl(loc)" value="SSL" severity="success" class="row-badge" />
+                <Tag v-if="loc.props?.websocket" value="WS" severity="info" class="row-badge" />
+                <Tag v-if="loc.props?.cors" value="CORS" severity="secondary" class="row-badge" />
+                <Tag v-if="loc.props?.rateLimit" value="RL" severity="warn" class="row-badge" />
+                <Tag v-if="loc.props?.authBasic" value="AUTH" severity="contrast" class="row-badge" />
               </template>
             </Column>
 
@@ -176,9 +189,15 @@
             </Column>
 
             <!-- Actions (hover-reveal) -->
-            <Column style="width:6rem">
+            <Column style="width:7rem">
               <template #body="{ data: loc }">
                 <div class="actions-cell">
+                  <Button
+                    icon="pi pi-sliders-h"
+                    v-tooltip.top="'Properties'"
+                    text rounded size="small" severity="secondary"
+                    @click.stop="openProps(server, loc)"
+                  />
                   <Button
                     icon="pi pi-pencil"
                     v-tooltip.top="'Extra config'"
@@ -242,9 +261,159 @@
       @hide="cancelAdditionalConf"
     >
       <Textarea v-model="tmpAdditionalConf" rows="12" style="width:100%" />
+      <div v-if="extractedProps" class="extracted-summary">
+        <i class="pi pi-check-circle" />
+        Extracted to properties: {{ formatExtractedProps(extractedProps) }}
+      </div>
+      <div v-if="extractNotice === 'none'" class="extracted-summary extracted-summary--warn">
+        <i class="pi pi-info-circle" />
+        No recognizable directives found in the text.
+      </div>
       <template #footer>
         <Button label="Cancel" severity="secondary" @click="cancelAdditionalConf" />
+        <Button
+          label="Extract to Properties"
+          icon="pi pi-sliders-h"
+          severity="secondary"
+          outlined
+          @click="extractToProps"
+        />
         <Button label="Apply" @click="applyAdditionalConf" />
+      </template>
+    </Dialog>
+
+    <!-- Properties dialog -->
+    <Dialog
+      v-model:visible="propsDialogOpen"
+      :header="propsCtx?.location ? `Location properties — ${propsCtx.location.location}` : `Server properties — ${propsCtx?.server?.displayName || propsCtx?.server?.name}`"
+      modal
+      dismissableMask
+      style="width:560px"
+      @hide="cancelProps"
+    >
+      <Tabs v-if="tmpProps" v-model:value="propsActiveTab">
+
+        <!-- SERVER tabs -->
+        <template v-if="!propsCtx?.location">
+          <TabList>
+            <Tab value="general">General</Tab>
+            <Tab value="ssl">SSL / TLS</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel value="general">
+              <div class="props-form">
+                <label>Max upload size</label>
+                <InputText v-model="tmpProps.clientMaxBodySize" placeholder="e.g. 10m, 50m, 1g" />
+
+                <label>Gzip compression</label>
+                <ToggleSwitch v-model="tmpProps.gzip" />
+
+                <template v-if="tmpProps.gzip">
+                  <label>Gzip types</label>
+                  <InputText v-model="tmpProps.gzipTypes" placeholder="space-separated MIME types" />
+                </template>
+
+                <label>Access log</label>
+                <ToggleSwitch v-model="tmpProps.accessLog" />
+              </div>
+            </TabPanel>
+
+            <TabPanel value="ssl">
+              <div class="props-form">
+                <label>Enable SSL</label>
+                <ToggleSwitch v-model="tmpProps.ssl" />
+
+                <template v-if="tmpProps.ssl">
+                  <label>Certificate path</label>
+                  <InputText v-model="tmpProps.sslCertificate" placeholder="/etc/ssl/cert.pem" />
+
+                  <label>Key path</label>
+                  <InputText v-model="tmpProps.sslCertificateKey" placeholder="/etc/ssl/key.pem" />
+
+                  <label>Protocols</label>
+                  <MultiSelect
+                    v-model="tmpProps.sslProtocols"
+                    :options="sslProtocolOptions"
+                    placeholder="Select protocols"
+                    style="width:100%"
+                  />
+                </template>
+              </div>
+            </TabPanel>
+          </TabPanels>
+        </template>
+
+        <!-- LOCATION tabs -->
+        <template v-else>
+          <TabList>
+            <Tab value="proxy">Proxy</Tab>
+            <Tab value="security">Security</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel value="proxy">
+              <div class="props-form">
+                <label>WebSocket support</label>
+                <ToggleSwitch v-model="tmpProps.websocket" />
+
+                <label>Read timeout</label>
+                <InputText v-model="tmpProps.proxyReadTimeout" placeholder="e.g. 60s, 5m" />
+
+                <label>Connect timeout</label>
+                <InputText v-model="tmpProps.proxyConnectTimeout" placeholder="e.g. 60s" />
+
+                <label>Send timeout</label>
+                <InputText v-model="tmpProps.proxySendTimeout" placeholder="e.g. 60s" />
+
+                <label>Proxy buffering</label>
+                <SelectButton
+                  v-model="tmpProps.proxyBuffering"
+                  :options="bufferingOptions"
+                  style="font-size:0.82rem"
+                />
+              </div>
+            </TabPanel>
+
+            <TabPanel value="security">
+              <div class="props-form">
+                <label>CORS</label>
+                <ToggleSwitch v-model="tmpProps.cors" />
+
+                <template v-if="tmpProps.cors">
+                  <label>Allowed origin</label>
+                  <InputText v-model="tmpProps.corsOrigin" placeholder="* or https://example.com" />
+                </template>
+
+                <label>Rate limiting</label>
+                <ToggleSwitch v-model="tmpProps.rateLimit" />
+
+                <template v-if="tmpProps.rateLimit">
+                  <label>Zone name</label>
+                  <InputText v-model="tmpProps.rateLimitZone" placeholder="e.g. api" />
+
+                  <label>Burst</label>
+                  <InputText v-model="tmpProps.rateLimitBurst" placeholder="e.g. 20" />
+                </template>
+
+                <label>Basic auth</label>
+                <ToggleSwitch v-model="tmpProps.authBasic" />
+
+                <template v-if="tmpProps.authBasic">
+                  <label>Realm</label>
+                  <InputText v-model="tmpProps.authBasicRealm" placeholder="Restricted" />
+
+                  <label>User file</label>
+                  <InputText v-model="tmpProps.authBasicUserFile" placeholder="/etc/nginx/.htpasswd" />
+                </template>
+              </div>
+            </TabPanel>
+          </TabPanels>
+        </template>
+
+      </Tabs>
+
+      <template #footer>
+        <Button label="Cancel" severity="secondary" @click="cancelProps" />
+        <Button label="Apply" @click="applyProps" />
       </template>
     </Dialog>
 
@@ -265,6 +434,13 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import Dialog from 'primevue/dialog'
 import Popover from 'primevue/popover'
 import Tag from 'primevue/tag'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
+import TabPanel from 'primevue/tabpanel'
+import MultiSelect from 'primevue/multiselect'
+import SelectButton from 'primevue/selectbutton'
 
 const confirm = useConfirm()
 
@@ -345,10 +521,14 @@ async function showServerConf(server) {
 const additionalConfOpen = ref(false)
 const additionalConfCtx = ref(null)
 const tmpAdditionalConf = ref('')
+const extractedProps = ref(null)
+const extractNotice = ref(null)
 
 function openAdditionalConf(server, location = null) {
   additionalConfCtx.value = { server, location }
   tmpAdditionalConf.value = location ? (location.extraConf || '') : (server.extraConf || '')
+  extractedProps.value = null
+  extractNotice.value = null
   additionalConfOpen.value = true
 }
 
@@ -356,17 +536,180 @@ function cancelAdditionalConf() {
   additionalConfOpen.value = false
   additionalConfCtx.value = null
   tmpAdditionalConf.value = ''
+  extractedProps.value = null
+  extractNotice.value = null
 }
 
 function applyAdditionalConf() {
   const { server, location } = additionalConfCtx.value
   if (location) {
     location.extraConf = tmpAdditionalConf.value
+    if (extractedProps.value) {
+      location.props = { ...defaultLocationProps(), ...(location.props || {}), ...extractedProps.value }
+    }
   } else {
     server.extraConf = tmpAdditionalConf.value
+    if (extractedProps.value) {
+      server.props = { ...defaultServerProps(), ...(server.props || {}), ...extractedProps.value }
+    }
   }
   additionalConfOpen.value = false
   additionalConfCtx.value = null
+  extractedProps.value = null
+  extractNotice.value = null
+  save()
+}
+
+function extractToProps() {
+  const isLocation = !!additionalConfCtx.value?.location
+  const { props, remaining } = isLocation
+    ? parseLocationDirectives(tmpAdditionalConf.value)
+    : parseServerDirectives(tmpAdditionalConf.value)
+
+  if (Object.keys(props).length === 0) {
+    extractNotice.value = 'none'
+    return
+  }
+
+  tmpAdditionalConf.value = remaining
+  extractedProps.value = { ...(extractedProps.value || {}), ...props }
+  extractNotice.value = null
+}
+
+function formatExtractedProps(props) {
+  const labels = {
+    clientMaxBodySize: 'max body size', gzip: 'gzip', gzipTypes: 'gzip types',
+    accessLog: 'access log', ssl: 'SSL', sslCertificate: 'SSL cert',
+    sslCertificateKey: 'SSL key', sslProtocols: 'SSL protocols',
+    websocket: 'WebSocket', proxyReadTimeout: 'read timeout',
+    proxyConnectTimeout: 'connect timeout', proxySendTimeout: 'send timeout',
+    proxyBuffering: 'buffering', cors: 'CORS', corsOrigin: 'CORS origin',
+    rateLimit: 'rate limit', rateLimitZone: 'RL zone', rateLimitBurst: 'RL burst',
+    authBasic: 'basic auth', authBasicRealm: 'auth realm', authBasicUserFile: 'auth file',
+  }
+  return Object.keys(props).map(k => labels[k] || k).join(', ')
+}
+
+function parseServerDirectives(text) {
+  const props = {}
+  const kept = []
+  for (const line of text.split('\n')) {
+    const t = line.trim()
+    let m
+    if (!t || t.startsWith('#')) { kept.push(line); continue }
+    if (m = t.match(/^client_max_body_size\s+(.+?);$/))       { props.clientMaxBodySize = m[1] }
+    else if (m = t.match(/^gzip\s+(on|off);$/))                { props.gzip = m[1] === 'on' }
+    else if (m = t.match(/^gzip_types\s+(.+?);$/))             { props.gzipTypes = m[1] }
+    else if (m = t.match(/^access_log\s+(off|on);$/))          { props.accessLog = m[1] !== 'off' }
+    else if (m = t.match(/^ssl_certificate\s+(.+?);$/))        { props.ssl = true; props.sslCertificate = m[1] }
+    else if (m = t.match(/^ssl_certificate_key\s+(.+?);$/))    { props.ssl = true; props.sslCertificateKey = m[1] }
+    else if (m = t.match(/^ssl_protocols\s+(.+?);$/))          { props.ssl = true; props.sslProtocols = m[1].trim().split(/\s+/) }
+    else { kept.push(line) }
+  }
+  return { props, remaining: kept.join('\n').replace(/\n{3,}/g, '\n\n').trim() }
+}
+
+function parseLocationDirectives(text) {
+  const lines = text.split('\n')
+  const props = {}
+  const skipIdx = new Set()
+
+  const wsVersionIdx   = lines.findIndex(l => /^proxy_http_version\s+1\.1;$/.test(l.trim()))
+  const wsUpgradeIdx   = lines.findIndex(l => /^proxy_set_header\s+Upgrade\s+\$http_upgrade;$/.test(l.trim()))
+  const wsConnIdx      = lines.findIndex(l => /^proxy_set_header\s+Connection\s+"upgrade";$/.test(l.trim()))
+  if (wsVersionIdx >= 0 && wsUpgradeIdx >= 0 && wsConnIdx >= 0) {
+    props.websocket = true
+    skipIdx.add(wsVersionIdx); skipIdx.add(wsUpgradeIdx); skipIdx.add(wsConnIdx)
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    if (skipIdx.has(i)) continue
+    const t = lines[i].trim()
+    let m
+    if (!t || t.startsWith('#')) continue
+    if (m = t.match(/^proxy_read_timeout\s+(.+?);$/))                              { props.proxyReadTimeout = m[1]; skipIdx.add(i) }
+    else if (m = t.match(/^proxy_connect_timeout\s+(.+?);$/))                      { props.proxyConnectTimeout = m[1]; skipIdx.add(i) }
+    else if (m = t.match(/^proxy_send_timeout\s+(.+?);$/))                         { props.proxySendTimeout = m[1]; skipIdx.add(i) }
+    else if (m = t.match(/^proxy_buffering\s+(on|off);$/))                          { props.proxyBuffering = m[1] === 'on' ? 'On' : 'Off'; skipIdx.add(i) }
+    else if (m = t.match(/^add_header\s+Access-Control-Allow-Origin\s+"?([^";]+?)"?\s*always;$/)) { props.cors = true; props.corsOrigin = m[1]; skipIdx.add(i) }
+    else if (m = t.match(/^limit_req\s+zone=(\S+?)(?:\s+burst=(\d+))?(?:\s+nodelay)?;$/)) { props.rateLimit = true; props.rateLimitZone = m[1]; if (m[2]) props.rateLimitBurst = m[2]; skipIdx.add(i) }
+    else if (m = t.match(/^auth_basic\s+"([^"]*)";$/))                              { props.authBasic = true; props.authBasicRealm = m[1]; skipIdx.add(i) }
+    else if (m = t.match(/^auth_basic_user_file\s+(.+?);$/))                       { props.authBasicUserFile = m[1]; skipIdx.add(i) }
+  }
+
+  if (props.cors) {
+    for (let i = 0; i < lines.length; i++) {
+      if (skipIdx.has(i)) continue
+      const t = lines[i].trim()
+      if (/^add_header\s+Access-Control-Allow-Methods/.test(t) ||
+          /^add_header\s+Access-Control-Allow-Headers/.test(t)) skipIdx.add(i)
+    }
+  }
+
+  const kept = lines.filter((_, i) => !skipIdx.has(i))
+  return { props, remaining: kept.join('\n').replace(/\n{3,}/g, '\n\n').trim() }
+}
+
+// Properties dialog
+const propsDialogOpen = ref(false)
+const propsCtx = ref(null)
+const tmpProps = ref(null)
+const propsActiveTab = ref('general')
+
+const sslProtocolOptions = ['TLSv1.2', 'TLSv1.3']
+const bufferingOptions = ['Default', 'On', 'Off']
+
+const defaultServerProps = () => ({
+  clientMaxBodySize: '',
+  gzip: false,
+  gzipTypes: 'text/plain text/css application/json application/javascript text/xml application/xml',
+  accessLog: true,
+  ssl: false,
+  sslCertificate: '',
+  sslCertificateKey: '',
+  sslProtocols: ['TLSv1.2', 'TLSv1.3'],
+})
+
+const defaultLocationProps = () => ({
+  websocket: false,
+  proxyReadTimeout: '',
+  proxyConnectTimeout: '',
+  proxySendTimeout: '',
+  proxyBuffering: 'Default',
+  cors: false,
+  corsOrigin: '*',
+  rateLimit: false,
+  rateLimitZone: '',
+  rateLimitBurst: '',
+  authBasic: false,
+  authBasicRealm: 'Restricted',
+  authBasicUserFile: '',
+})
+
+function openProps(server, location = null) {
+  propsCtx.value = { server, location }
+  const defaults = location ? defaultLocationProps() : defaultServerProps()
+  const existing = location ? (location.props || {}) : (server.props || {})
+  tmpProps.value = { ...defaults, ...existing }
+  propsActiveTab.value = location ? 'proxy' : 'general'
+  propsDialogOpen.value = true
+}
+
+function cancelProps() {
+  propsDialogOpen.value = false
+  propsCtx.value = null
+  tmpProps.value = null
+}
+
+function applyProps() {
+  const { server, location } = propsCtx.value
+  if (location) {
+    location.props = { ...tmpProps.value }
+  } else {
+    server.props = { ...tmpProps.value }
+  }
+  propsDialogOpen.value = false
+  propsCtx.value = null
   save()
 }
 
@@ -378,6 +721,7 @@ function addServer() {
     port: '80',
     enable: false,
     extraConf: '',
+    props: {},
     locations: []
   })
   save()
@@ -423,7 +767,8 @@ async function addLocation(server) {
     location: '/path',
     proxyPass: 'http://target',
     enable: false,
-    extraConf: ''
+    extraConf: '',
+    props: {}
   })
   await save()
 }
@@ -520,9 +865,9 @@ onMounted(loadServers)
 }
 .editable-link:hover { text-decoration: underline; }
 
-.loc-badge {
-  font-size: 0.68rem;
-  margin-left: 0.4rem;
+.row-badge {
+  font-size: 0.63rem;
+  margin-left: 0.35rem;
   vertical-align: middle;
 }
 
@@ -594,12 +939,6 @@ onMounted(loadServers)
 }
 .loc-path:hover { color: var(--p-primary-color, #6366f1); }
 
-.ssl-badge {
-  font-size: 0.63rem;
-  margin-left: 0.35rem;
-  vertical-align: middle;
-}
-
 .proxy-pass {
   font-size: 0.83rem;
   color: var(--text-secondary);
@@ -645,5 +984,44 @@ onMounted(loadServers)
   color: var(--text-secondary);
   padding: 0.75rem;
   border-radius: 4px;
+}
+
+/* Extracted summary */
+.extracted-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  background: color-mix(in srgb, var(--p-green-500) 12%, transparent);
+  color: var(--p-green-600);
+  border: 1px solid color-mix(in srgb, var(--p-green-500) 30%, transparent);
+}
+.extracted-summary--warn {
+  background: color-mix(in srgb, var(--p-orange-500) 12%, transparent);
+  color: var(--p-orange-600);
+  border-color: color-mix(in srgb, var(--p-orange-500) 30%, transparent);
+}
+
+/* Properties form */
+.props-form {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 0.85rem 1rem;
+  align-items: center;
+  padding: 0.75rem 0.25rem;
+}
+
+.props-form label {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.props-form :deep(.p-inputtext),
+.props-form :deep(.p-multiselect) {
+  width: 100%;
 }
 </style>
