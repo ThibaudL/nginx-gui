@@ -1,3 +1,38 @@
+const NginxPaths = require('./NginxPaths');
+
+function generateConf(httpConf, serversToStart) {
+    const nginxPath = (p) => p.replace(/\\/g, '/');
+    return `
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    ${NginxPaths.isWindows ? 'include       mime.types;' : ''}
+    default_type  application/octet-stream;
+
+    sendfile        on;
+
+    keepalive_timeout  65;
+
+    map $http_x_correlation_id $correlation_id {
+        default $http_x_correlation_id;
+        ""      $request_id;
+    }
+
+    log_format json_logs '{"remote_addr":"$remote_addr", "correlation_id":"$correlation_id", "remote_user":"$remote_user", "time_local":"$time_local", '
+                       '"server_name":"$sent_http_x_server_name", "proxy_host":"$proxy_host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", '
+                       '"http_referrer":"$http_referer", "http_user_agent":"$http_user_agent"}';
+    access_log ${nginxPath(NginxPaths.accessLogPath)} json_logs;
+    error_log  ${nginxPath(NginxPaths.errorLogPath)};
+
+    ${httpConf.additionnalHttpConf || '# No additionnal http configuration'}
+
+${serversToStart.map((server) => generateServer(server)).join('\n')}
+}`;
+}
+
 function generateServerProps(server) {
     const p = server.props || {}
     const lines = []
@@ -90,4 +125,4 @@ function generateServer(server) {
 }`;
 }
 
-module.exports = { generateServer, generateLocation };
+module.exports = { generateConf, generateServer, generateLocation };

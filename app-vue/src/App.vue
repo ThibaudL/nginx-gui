@@ -42,6 +42,7 @@ import Textarea from 'primevue/textarea'
 import Runner from './components/Runner.vue'
 import Servers from './components/Servers.vue'
 import Topology from './components/Topology.vue'
+import { useApi } from './composables/useApi'
 
 const activeView = ref('servers')
 const runnerRef = ref(null)
@@ -50,17 +51,7 @@ const httpConf = ref({})
 const httpConfText = ref('')
 const confContent = ref('')
 
-async function apiFetch(url, { method = 'GET', body } = {}) {
-  const opts = { method, headers: {} }
-  if (body !== undefined) {
-    opts.headers['Content-Type'] = 'application/json'
-    opts.body = JSON.stringify(body)
-  }
-  const r = await fetch(url, opts)
-  if (r.status === 204) return null
-  const ct = r.headers.get('content-type') || ''
-  return ct.includes('json') ? r.json() : r.text()
-}
+const { apiFetch } = useApi()
 
 async function loadHttpConf() {
   const data = await apiFetch('/api/nginx/http')

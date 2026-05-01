@@ -254,7 +254,7 @@ class NginxService {
             ? this.db.getNginxHttpConf().data
             : [{additionnalHttpConf: ''}];
         const serversToStart = this.db.getNginx().data.filter((server) => server.enable);
-        const confContent = this.generateConfFile(httpConf[0], serversToStart);
+        const confContent = NginxConfGenerator.generateConf(httpConf[0], serversToStart);
         return confContent;
     }
 
@@ -344,41 +344,6 @@ class NginxService {
                 status: 'success'
             });
         }, 2000);
-    }
-
-    generateConfFile(httpConf, serversToStart) {
-        // nginx config parser on Windows interprets \n, \t etc. as escape sequences,
-        // so backslash paths must be converted to forward slashes
-        const nginxPath = (p) => p.replace(/\\/g, '/');
-        return `
-events {
-    worker_connections  1024;
-}
-
-
-http {
-    ${NginxPaths.isWindows ? 'include       mime.types;' : ''}
-    default_type  application/octet-stream;
-
-    sendfile        on;
-
-    keepalive_timeout  65;
-
-    map $http_x_correlation_id $correlation_id {
-        default $http_x_correlation_id;
-        ""      $request_id;
-    }
-
-    log_format json_logs '{"remote_addr":"$remote_addr", "correlation_id":"$correlation_id", "remote_user":"$remote_user", "time_local":"$time_local", '
-                       '"server_name":"$sent_http_x_server_name", "proxy_host":"$proxy_host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", '
-                       '"http_referrer":"$http_referer", "http_user_agent":"$http_user_agent"}';
-    access_log ${nginxPath(NginxPaths.accessLogPath)} json_logs;
-    error_log  ${nginxPath(NginxPaths.errorLogPath)};
-
-    ${httpConf.additionnalHttpConf || '# No additionnal http configuration'}
-
-${serversToStart.map((server) => NginxConfGenerator.generateServer(server)).join('\n')}
-}`;
     }
 
     validateConf(req, res) {

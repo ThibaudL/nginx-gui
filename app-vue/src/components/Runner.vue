@@ -179,9 +179,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue'
-import { useToast } from 'primevue/usetoast'
 import { useTheme } from '../composables/useTheme'
+import { useNginxControl } from '../composables/useNginxControl'
+import { useLogStreaming } from '../composables/useLogStreaming'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
 import Dialog from 'primevue/dialog'
@@ -194,199 +194,19 @@ import NginxSetup from './NginxSetup.vue'
 defineProps({ activeView: String })
 defineEmits(['navigate'])
 
-const toast = useToast()
 const { isDark, toggle: toggleTheme } = useTheme()
 
-const needsSetup = ref(false)
-const isRunning = ref(false)
-const isLoading = ref(false)
-const isValidating = ref(false)
-const autoStartOnStartup = ref(false)
-const accessLogs = ref([])
-const logDialogOpen = ref(false)
-const filter = ref('')
-const liveConnected = ref(false)
+const {
+  needsSetup, isRunning, isLoading, isValidating, autoStartOnStartup,
+  checkIsRunning, loadSettings, saveAutoStart, onBinaryReady,
+  runNginx, killNginx, restartNginx, testConfig,
+} = useNginxControl()
 
-const errorLogs = ref([])
-const errorLogDialogOpen = ref(false)
-const errorFilter = ref('')
-const errorLiveConnected = ref(false)
-
-let eventSource = null
-let errorEventSource = null
-
-watch(logDialogOpen, (open) => {
-  if (open) {
-    eventSource = new EventSource('/api/nginx/logs/access/stream')
-    eventSource.onopen = () => { liveConnected.value = true }
-    eventSource.onmessage = (e) => {
-      try {
-        const entry = { ...JSON.parse(e.data), id: Date.now() + Math.random() }
-        accessLogs.value.unshift(entry)
-        if (accessLogs.value.length > 1000) accessLogs.value.length = 1000
-      } catch {}
-    }
-    eventSource.onerror = () => { liveConnected.value = false }
-  } else {
-    if (eventSource) { eventSource.close(); eventSource = null }
-    liveConnected.value = false
-  }
-})
-
-watch(errorLogDialogOpen, (open) => {
-  if (open) {
-    errorEventSource = new EventSource('/api/nginx/logs/error/stream')
-    errorEventSource.onopen = () => { errorLiveConnected.value = true }
-    errorEventSource.onmessage = (e) => {
-      errorLogs.value.unshift({ text: e.data, id: Date.now() + Math.random() })
-      if (errorLogs.value.length > 1000) errorLogs.value.length = 1000
-    }
-    errorEventSource.onerror = () => { errorLiveConnected.value = false }
-  } else {
-    if (errorEventSource) { errorEventSource.close(); errorEventSource = null }
-    errorLiveConnected.value = false
-  }
-})
-
-onUnmounted(() => {
-  if (eventSource) eventSource.close()
-  if (errorEventSource) errorEventSource.close()
-})
-
-const filteredLogs = computed(() => {
-  if (!filter.value) return accessLogs.value
-  const q = filter.value.toLowerCase()
-  return accessLogs.value.filter((row) =>
-    Object.values(row).some((v) => String(v).toLowerCase().includes(q))
-  )
-})
-
-const filteredErrorLogs = computed(() => {
-  if (!errorFilter.value) return errorLogs.value
-  const q = errorFilter.value.toLowerCase()
-  return errorLogs.value.filter((row) => row.text.toLowerCase().includes(q))
-})
-
-async function apiFetch(url, { method = 'GET', body } = {}) {
-  const opts = { method, headers: {} }
-  if (body !== undefined) {
-    opts.headers['Content-Type'] = 'application/json'
-    opts.body = JSON.stringify(body)
-  }
-  const r = await fetch(url, opts)
-  if (r.status === 204) return null
-  return r.json()
-}
-
-async function checkIsRunning() {
-  const setup = await apiFetch('/api/nginx/setup')
-  needsSetup.value = !setup.found
-  if (!needsSetup.value) {
-    isRunning.value = await apiFetch('/api/nginx/running')
-  }
-}
-
-async function loadSettings() {
-  const data = await apiFetch('/api/nginx/settings')
-  autoStartOnStartup.value = !!data?.autoStartOnStartup
-}
-
-async function saveAutoStart() {
-  await apiFetch('/api/nginx/settings', { method: 'POST', body: { autoStartOnStartup: autoStartOnStartup.value } })
-}
-
-async function onBinaryReady() {
-  needsSetup.value = false
-  isRunning.value = await apiFetch('/api/nginx/running')
-}
-
-async function runNginx() {
-  isLoading.value = true
-  toast.add({ severity: 'info', summary: 'Nginx', detail: 'Starting…', life: 3000 })
-  try {
-    const data = await apiFetch('/api/nginx/run', { method: 'POST' })
-    const detail = data?.log || 'Started'
-    const isError = data?.status === 'error'
-    toast.add({ severity: isError ? 'error' : 'success', summary: 'Nginx', detail, life: 4000 })
-  } catch {
-    toast.add({ severity: 'error', summary: 'Nginx', detail: 'Request failed', life: 4000 })
-  } finally {
-    await checkIsRunning()
-    isLoading.value = false
-  }
-}
-
-async function killNginx() {
-  isLoading.value = true
-  toast.add({ severity: 'info', summary: 'Nginx', detail: 'Stopping…', life: 3000 })
-  try {
-    const data = await apiFetch('/api/nginx/kill', { method: 'POST' })
-    const detail = data?.log || 'Stopped'
-    const isError = data?.status === 'error'
-    toast.add({ severity: isError ? 'error' : 'success', summary: 'Nginx', detail, life: 4000 })
-  } catch {
-    toast.add({ severity: 'error', summary: 'Nginx', detail: 'Request failed', life: 4000 })
-  } finally {
-    await checkIsRunning()
-    isLoading.value = false
-  }
-}
-
-async function restartNginx() {
-  isLoading.value = true
-  toast.add({ severity: 'info', summary: 'Nginx', detail: 'Restarting…', life: 3000 })
-  try {
-    const data = await apiFetch('/api/nginx/restart', { method: 'POST' })
-    const detail = data?.log || 'Restarted'
-    const isError = data?.status === 'error'
-    toast.add({ severity: isError ? 'error' : 'success', summary: 'Nginx', detail, life: 4000 })
-  } catch {
-    toast.add({ severity: 'error', summary: 'Nginx', detail: 'Request failed', life: 4000 })
-  } finally {
-    await checkIsRunning()
-    isLoading.value = false
-  }
-}
-
-async function testConfig() {
-  isValidating.value = true
-  try {
-    const data = await apiFetch('/api/nginx/validate', { method: 'POST' })
-    if (data?.valid) {
-      toast.add({ severity: 'success', summary: 'Config OK', detail: data.output || 'nginx -t passed', life: 4000 })
-    } else {
-      toast.add({ severity: 'error', summary: 'Config invalid', detail: data?.error || 'Validation failed', life: 8000 })
-    }
-  } catch {
-    toast.add({ severity: 'error', summary: 'Config test', detail: 'Request failed', life: 4000 })
-  } finally {
-    isValidating.value = false
-  }
-}
-
-function clearLogs() {
-  accessLogs.value = []
-}
-
-function clearErrorLogs() {
-  errorLogs.value = []
-}
-
-async function showErrorLog() {
-  const data = await apiFetch('/api/nginx/logs/error')
-  let id = 0
-  errorLogs.value = data.map((raw) => ({ text: raw, id: id++ }))
-  errorLogDialogOpen.value = true
-}
-
-async function showLog() {
-  const data = await apiFetch('/api/nginx/logs/access')
-  let id = 0
-  accessLogs.value = data.map((raw) => {
-    try { return { ...JSON.parse(raw), id: id++ } } catch { return { id: id++ } }
-  })
-  logDialogOpen.value = true
-}
+const {
+  logDialogOpen, filter, liveConnected, filteredLogs,
+  errorLogDialogOpen, errorFilter, errorLiveConnected, filteredErrorLogs,
+  clearLogs, clearErrorLogs, showLog, showErrorLog,
+} = useLogStreaming()
 
 defineExpose({ showLog })
 

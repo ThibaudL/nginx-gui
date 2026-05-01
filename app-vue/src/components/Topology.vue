@@ -66,9 +66,11 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Popover from 'primevue/popover'
 import { useTheme } from '../composables/useTheme'
+import { useApi } from '../composables/useApi'
 
 const emit = defineEmits(['open-access-logs'])
 const { isDark } = useTheme()
+const { apiFetch } = useApi()
 
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
@@ -215,13 +217,7 @@ function disconnectSSE() {
   if (sseSource) { sseSource.close(); sseSource = null }
 }
 
-// ─── API ──────────────────────────────────────────────────────────────────────
-
-async function apiFetch(url) {
-  const r = await fetch(url)
-  const ct = r.headers.get('content-type') || ''
-  return ct.includes('json') ? r.json() : r.text()
-}
+// ─── Data ─────────────────────────────────────────────────────────────────────
 
 async function buildGraphData() {
   const [servers, rawLogs] = await Promise.all([
