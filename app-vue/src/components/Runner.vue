@@ -125,6 +125,7 @@
     header="Error Logs"
     modal
     maximizable
+    dismissableMask
     style="width:90vw"
   >
     <div class="mb-2 log-filter-row">
@@ -147,6 +148,7 @@
     header="Access Logs"
     modal
     maximizable
+    dismissableMask
     style="width:90vw"
   >
     <div class="mb-2 log-filter-row">

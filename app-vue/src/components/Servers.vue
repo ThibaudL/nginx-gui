@@ -208,6 +208,7 @@
       :header="activeServer?.displayName || 'Configuration'"
       modal
       maximizable
+      dismissableMask
       style="width:700px"
     >
       <pre class="conf-pre">{{ activeServerConf }}</pre>
@@ -218,6 +219,7 @@
       v-model:visible="additionalConfOpen"
       header="Additional Configuration"
       modal
+      dismissableMask
       style="width:520px"
       @hide="cancelAdditionalConf"
     >

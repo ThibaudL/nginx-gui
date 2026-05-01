@@ -49,7 +49,7 @@
     </svg>
 
     <!-- Paths modal -->
-    <Dialog v-model:visible="modalOpen" :header="modalTitle" modal style="width:360px">
+    <Dialog v-model:visible="modalOpen" :header="modalTitle" modal dismissableMask style="width:360px">
       <ul class="path-list">
         <li v-for="p in modalPaths" :key="p">
           <code>{{ p }}</code>
