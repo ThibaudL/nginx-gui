@@ -8,7 +8,7 @@ import App from './App.vue'
 import Tooltip from "primevue/tooltip";
 
 const app = createApp(App)
-app.use(PrimeVue, { theme: { preset: Aura } })
+app.use(PrimeVue, { theme: { preset: Aura, options: { darkModeSelector: '.dark' } } })
 app.use(ConfirmationService)
 app.use(ToastService)
 app.directive('tooltip', Tooltip)

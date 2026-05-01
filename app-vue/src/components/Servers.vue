@@ -454,8 +454,8 @@ onMounted(loadServers)
   align-items: center;
   justify-content: space-between;
   padding: 0.65rem 1rem;
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
   gap: 0.75rem;
   flex-shrink: 0;
 }
@@ -464,7 +464,7 @@ onMounted(loadServers)
 .server-name {
   font-family: monospace;
   font-size: 0.85rem;
-  color: #374151;
+  color: var(--text-secondary);
   cursor: pointer;
   display: block;
   max-width: 380px;
@@ -490,7 +490,7 @@ onMounted(loadServers)
 .port-val {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-muted);
   cursor: pointer;
   font-family: monospace;
 }
@@ -519,8 +519,8 @@ onMounted(loadServers)
 
 /* Location expansion pane */
 .location-pane {
-  background: #f9fafb;
-  border-top: 2px solid #e5e7eb;
+  background: var(--bg-surface-alt);
+  border-top: 2px solid var(--border);
 }
 
 .loc-header {
@@ -533,7 +533,7 @@ onMounted(loadServers)
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #6b7280;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -542,14 +542,14 @@ onMounted(loadServers)
 
 .loc-num {
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--text-subtle);
   font-family: monospace;
 }
 
 .loc-path {
   font-family: monospace;
   font-size: 0.85rem;
-  color: #111827;
+  color: var(--text-primary);
   font-weight: 600;
   cursor: pointer;
 }
@@ -563,7 +563,7 @@ onMounted(loadServers)
 
 .proxy-pass {
   font-size: 0.83rem;
-  color: #374151;
+  color: var(--text-secondary);
   cursor: pointer;
   display: block;
   max-width: 220px;
@@ -575,13 +575,13 @@ onMounted(loadServers)
 
 .loc-port {
   font-size: 0.82rem;
-  color: #374151;
+  color: var(--text-secondary);
   font-family: monospace;
 }
 
 .empty-locations {
   text-align: center;
-  color: #9ca3af;
+  color: var(--text-subtle);
   padding: 1.5rem;
   font-size: 0.88rem;
 }
@@ -602,7 +602,8 @@ onMounted(loadServers)
   white-space: pre;
   overflow: auto;
   max-height: 70vh;
-  background: #f3f4f6;
+  background: var(--bg-code);
+  color: var(--text-secondary);
   padding: 0.75rem;
   border-radius: 4px;
 }

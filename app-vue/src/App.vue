@@ -92,6 +92,30 @@ watch(activeView, (v) => {
 </script>
 
 <style>
+:root {
+  --bg-main: #f8f9fc;
+  --bg-surface: #ffffff;
+  --bg-surface-alt: #f9fafb;
+  --bg-code: #f3f4f6;
+  --border: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
+  --text-subtle: #9ca3af;
+}
+
+html.dark {
+  --bg-main: #0f1117;
+  --bg-surface: #1a1c27;
+  --bg-surface-alt: #1e2132;
+  --bg-code: #252838;
+  --border: rgba(255,255,255,0.08);
+  --text-primary: #e2e8f0;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; }
 body { font-family: var(--p-font-family, system-ui, sans-serif); }
@@ -106,7 +130,7 @@ body { font-family: var(--p-font-family, system-ui, sans-serif); }
 .main-content {
   flex: 1;
   overflow-y: auto;
-  background: #f8f9fc;
+  background: var(--bg-main);
   min-width: 0;
 }
 
@@ -125,7 +149,7 @@ body { font-family: var(--p-font-family, system-ui, sans-serif); }
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .p-datatable-table { width: 100%; }
@@ -134,8 +158,9 @@ body { font-family: var(--p-font-family, system-ui, sans-serif); }
   font-family: monospace;
   font-size: 0.82rem;
   white-space: pre;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
   border-radius: 6px;
   padding: 1rem;
   overflow: auto;

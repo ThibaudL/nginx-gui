@@ -60,13 +60,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import * as d3 from 'd3'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Popover from 'primevue/popover'
+import { useTheme } from '../composables/useTheme'
 
 const emit = defineEmits(['open-access-logs'])
+const { isDark } = useTheme()
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
 
 const logPathPopover = ref(null)
 const accessLogPath  = ref('')
@@ -362,28 +368,35 @@ function renderGraph(nodes, edges) {
       .on('end',   (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null })
     )
 
+  const serverFill = cssVar('--bg-surface')
+  const serverFillDisabled = cssVar('--bg-surface-alt')
+  const externalFill = cssVar('--bg-code')
+  const externalStroke = cssVar('--border')
+  const externalText = cssVar('--text-secondary')
+  const sublabelText = cssVar('--text-muted')
+
   node.filter(d => d.type === 'server').append('rect')
     .attr('rx', 7).attr('ry', 7).attr('width', 116).attr('height', 40)
     .attr('x', -58).attr('y', -20)
-    .attr('fill', d => d.enabled ? '#1a1c27' : '#374151')
+    .attr('fill', d => d.enabled ? serverFill : serverFillDisabled)
     .attr('stroke', d => d.enabled ? '#6366f1' : '#6b7280')
     .attr('stroke-width', 1.5)
 
   node.filter(d => d.type === 'server').append('text')
-    .attr('y', -3).attr('text-anchor', 'middle').attr('fill', '#fff')
+    .attr('y', -3).attr('text-anchor', 'middle').attr('fill', cssVar('--text-primary'))
     .attr('font-size', 11).attr('font-weight', 600).text(d => d.label)
 
   node.filter(d => d.type === 'server').append('text')
-    .attr('y', 11).attr('text-anchor', 'middle').attr('fill', '#94a3b8')
+    .attr('y', 11).attr('text-anchor', 'middle').attr('fill', sublabelText)
     .attr('font-size', 10).text(d => d.sublabel)
 
   node.filter(d => d.type === 'external').append('ellipse')
     .attr('rx', 52).attr('ry', 18)
-    .attr('fill', '#f1f5f9').attr('stroke', '#cbd5e1').attr('stroke-width', 1.5)
+    .attr('fill', externalFill).attr('stroke', externalStroke).attr('stroke-width', 1.5)
 
   node.filter(d => d.type === 'external').append('text')
     .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
-    .attr('fill', '#374151').attr('font-size', 10).text(d => d.label)
+    .attr('fill', externalText).attr('font-size', 10).text(d => d.label)
 
   simulation.on('tick', () => {
     link
@@ -421,6 +434,8 @@ onMounted(() => {
   apiFetch('/api/nginx/logs/access/path').then(d => { accessLogPath.value = d.path || '' }).catch(() => {})
 })
 onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
+
+watch(isDark, () => { if (!loading.value && !empty.value) load() })
 </script>
 
 <style scoped>
@@ -428,7 +443,7 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f8f9fc;
+  background: var(--bg-main);
 }
 
 .topology-toolbar {
@@ -436,15 +451,15 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
   align-items: center;
   gap: 1rem;
   padding: 0.65rem 1rem;
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
 .topology-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
   margin-right: auto;
 }
 
@@ -459,7 +474,7 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
   align-items: center;
   gap: 0.35rem;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .topology-svg {
@@ -470,15 +485,15 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
 
 .sse-counter {
   font-size: 0.75rem;
-  color: #d1d5db;
+  color: var(--border);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.sse-counter.active { color: #6b7280; }
+.sse-counter.active { color: var(--text-muted); }
 
 .log-disclaimer {
   font-size: 0.72rem;
-  color: #9ca3af;
+  color: var(--text-subtle);
   white-space: nowrap;
 }
 .log-disclaimer code {
@@ -502,7 +517,7 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
 .log-path-label {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -511,7 +526,7 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #f3f4f6;
+  background: var(--bg-code);
   border-radius: 5px;
   padding: 0.35rem 0.5rem;
 }
@@ -519,7 +534,7 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
 .log-path-value {
   flex: 1;
   font-size: 0.8rem;
-  color: #111827;
+  color: var(--text-primary);
   word-break: break-all;
 }
 
@@ -527,7 +542,7 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
   background: none;
   border: none;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-muted);
   padding: 2px 4px;
   border-radius: 4px;
   display: flex;
@@ -541,7 +556,7 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9ca3af;
+  color: var(--text-subtle);
   font-size: 0.95rem;
 }
 
@@ -556,12 +571,12 @@ onBeforeUnmount(() => { if (simulation) simulation.stop(); disconnectSSE() })
 
 .path-list li {
   padding: 0.35rem 0.6rem;
-  background: #f3f4f6;
+  background: var(--bg-code);
   border-radius: 4px;
 }
 
 .path-list code {
   font-size: 0.85rem;
-  color: #111827;
+  color: var(--text-primary);
 }
 </style>

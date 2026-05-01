@@ -87,6 +87,12 @@
 
     <div class="sidebar-spacer" />
 
+    <!-- Theme toggle -->
+    <button class="theme-toggle" @click="toggleTheme">
+      <i :class="isDark ? 'pi pi-sun' : 'pi pi-moon'" />
+      <span>{{ isDark ? 'Light mode' : 'Dark mode' }}</span>
+    </button>
+
     <!-- Log buttons -->
     <div class="logs-section">
       <button class="logs-toggle" @click="showLog">
@@ -163,6 +169,7 @@
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import { useTheme } from '../composables/useTheme'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
 import Dialog from 'primevue/dialog'
@@ -176,6 +183,7 @@ defineProps({ activeView: String })
 defineEmits(['navigate'])
 
 const toast = useToast()
+const { isDark, toggle: toggleTheme } = useTheme()
 
 const needsSetup = ref(false)
 const isRunning = ref(false)
@@ -482,6 +490,23 @@ loadSettings()
 .nav-item i { font-size: 0.88rem; }
 
 .sidebar-spacer { flex: 1; min-height: 0.5rem; }
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.45rem 1rem;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: color 0.15s;
+}
+.theme-toggle:hover { color: #94a3b8; }
+.theme-toggle i { font-size: 0.75rem; }
 
 .logs-section {
   border-top: 1px solid rgba(255,255,255,0.07);
