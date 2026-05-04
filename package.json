@@ -12,7 +12,7 @@
     "registry": "https://registry.npmjs.com/"
   },
   "bin": {
-    "nginx-gui": "./server/main.js"
+    "nginx-gui": "server/main.js"
   },
   "scripts": {
     "start": "node server/main.js",
