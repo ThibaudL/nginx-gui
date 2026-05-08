@@ -8,6 +8,35 @@ const {rotateNginxLog} = require('./NginxLogRotation');
 const {pidFilePath} = require("./NginxPaths");
 const NginxConfGenerator = require('./NginxConfGenerator');
 
+// Read last `maxLines` lines from a file without loading the entire file.
+// Reads at most CHUNK bytes from the end, doubling until enough lines are found.
+function tailLogFile(filePath, maxLines) {
+    if (!fs.existsSync(filePath)) return [];
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    if (fileSize === 0) return [];
+
+    const CHUNK = 256 * 1024; // 256 KB initial read
+    let readSize = Math.min(CHUNK, fileSize);
+    let start = fileSize - readSize;
+
+    while (true) {
+        const fd = fs.openSync(filePath, 'r');
+        const buf = Buffer.alloc(readSize);
+        fs.readSync(fd, buf, 0, readSize, start);
+        fs.closeSync(fd);
+
+        const lines = buf.toString().split(/\r?\n/).filter(Boolean);
+        // If we reached the beginning of the file, return what we have
+        if (start === 0) return lines.slice(-maxLines).reverse();
+        // If we have enough lines, we're done
+        if (lines.length > maxLines) return lines.slice(-maxLines).reverse();
+        // Not enough lines yet — double the read window
+        readSize = Math.min(readSize * 2, fileSize);
+        start = fileSize - readSize;
+    }
+}
+
 function readNginxPid() {
     try {
         const pid = parseInt(fs.readFileSync(NginxPaths.pidFilePath, 'utf8').trim(), 10);
@@ -90,9 +119,7 @@ class NginxService {
     getAccessLog(req, res) {
         try {
             const logPath = NginxPaths.accessLogPath;
-            const content = fs.existsSync(logPath) ? fs.readFileSync(logPath).toString() : '';
-            const logs = content.split(/\r?\n/).filter(Boolean).reverse().slice(0, 1000);
-            res.send(logs);
+            res.send(tailLogFile(logPath, 1000));
         } catch (e) {
             LOGGER.error('Error reading access log', e);
             res.send([]);
@@ -142,10 +169,7 @@ class NginxService {
 
     getErrorLog(req, res) {
         try {
-            const content = fs.existsSync(NginxPaths.errorLogPath)
-                ? fs.readFileSync(NginxPaths.errorLogPath).toString()
-                : '';
-            res.send(content.split(/\r?\n/).filter(Boolean).reverse().slice(0, 1000));
+            res.send(tailLogFile(NginxPaths.errorLogPath, 1000));
         } catch (e) {
             LOGGER.error('Error reading error log', e);
             res.send([]);
